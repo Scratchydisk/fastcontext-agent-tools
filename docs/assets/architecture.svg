@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="980" height="430" viewBox="0 0 980 430" role="img" aria-labelledby="title desc">
   <title id="title">FastContext Agent Tools architecture</title>
-  <desc id="desc">A coding agent uses a Codex skill to call the FastContext MCP server, which delegates repository exploration to the upstream FastContext CLI and model endpoint.</desc>
+  <desc id="desc">A coding agent uses a Codex skill to call the FastContext MCP server, which runs the bundled FastContext runtime against the repository and model endpoint.</desc>
   <defs>
     <marker id="arrow" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
       <path d="M0,0 L12,4 L0,8 Z" fill="#36506c"/>
@@ -37,9 +37,9 @@
   <text x="552" y="222" class="box-text">Enforces root allowlist</text>
 
   <rect x="766" y="138" width="168" height="112" rx="8" fill="#ffffff" stroke="#cbd6dc"/>
-  <text x="792" y="176" class="box-title">FastContext CLI</text>
-  <text x="792" y="202" class="box-text">READ / GLOB / GREP</text>
-  <text x="792" y="222" class="box-text">Final citations</text>
+  <text x="792" y="176" class="box-title">FastContext</text>
+  <text x="792" y="202" class="box-text">Bundled runtime</text>
+  <text x="792" y="222" class="box-text">READ / GLOB / GREP</text>
 
   <rect x="526" y="300" width="178" height="68" rx="8" fill="#ecf7f1" stroke="#9fcdb3"/>
   <text x="552" y="329" class="box-title">Repository</text>

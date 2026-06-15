@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import platform
-import stat
 import subprocess
 import sys
 import tempfile
@@ -11,6 +10,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from .render_summary import render_svg
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,11 +39,13 @@ def run_command(command: list[str], env: dict[str, str] | None = None) -> dict[s
     }
 
 
-def write_fake_fastcontext(bin_dir: Path) -> Path:
-    fake_cli = bin_dir / "fastcontext"
+def write_fake_fastcontext(package_root: Path) -> Path:
+    package_dir = package_root / "fastcontext"
+    package_dir.mkdir(parents=True)
+    (package_dir / "__init__.py").write_text("", encoding="utf-8")
+    fake_cli = package_dir / "cli.py"
     fake_cli.write_text(
-        """#!/usr/bin/env python3
-import argparse
+        """import argparse
 import json
 from pathlib import Path
 
@@ -69,7 +72,6 @@ print("</final_answer>")
 """,
         encoding="utf-8",
     )
-    fake_cli.chmod(fake_cli.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     return fake_cli
 
 
@@ -87,7 +89,7 @@ def read_message(process: subprocess.Popen[bytes]) -> dict[str, Any]:
     while True:
         line = process.stdout.readline()
         if line == b"":
-            raise RuntimeError("MCP server closed stdout while waiting for a response")
+            raise EOFError("MCP server closed stdout while waiting for a response")
         if line in {b"\r\n", b"\n"}:
             break
         name, _, value = line.decode("ascii").partition(":")
@@ -114,15 +116,13 @@ def run_mcp_smoke() -> dict[str, Any]:
         (repo / "src" / "app.py").write_text("def handler():\n    return 'ok'\n", encoding="utf-8")
         (repo / "tests" / "test_app.py").write_text("def test_handler():\n    assert True\n", encoding="utf-8")
 
-        bin_dir = temp_root / "bin"
-        bin_dir.mkdir()
-        fake_cli = write_fake_fastcontext(bin_dir)
+        fake_site = temp_root / "fake-site"
+        fake_cli = write_fake_fastcontext(fake_site)
 
         env = os.environ.copy()
         env.update(
             {
-                "PYTHONPATH": str(ROOT / "src"),
-                "PATH": f"{bin_dir}{os.pathsep}{env.get('PATH', '')}",
+                "PYTHONPATH": os.pathsep.join([str(fake_site), str(ROOT / "src")]),
                 "BASE_URL": "http://127.0.0.1:30000/v1",
                 "MODEL": "microsoft/FastContext-1.0-4B-SFT",
                 "API_KEY": "eval-key",
@@ -196,7 +196,9 @@ def run_mcp_smoke() -> dict[str, Any]:
 
             health_payload = json.loads(health["result"]["content"][0]["text"])
             assert health_payload["ok"] is True
-            assert Path(health_payload["fastcontext_cli"]) == fake_cli
+            assert health_payload["fastcontext_module"] == "fastcontext.cli"
+            assert health_payload["fastcontext_command"] == [sys.executable, "-m", "fastcontext.cli"]
+            assert fake_cli.exists()
 
             explore_payload = json.loads(explore["result"]["content"][0]["text"])
             assert explore_payload["ok"] is True
@@ -216,7 +218,15 @@ def run_mcp_smoke() -> dict[str, Any]:
                 "trace_created": True,
                 "path_guard_rejected_outside_repo": True,
             }
-        except Exception as exc:
+        except (
+            AssertionError,
+            EOFError,
+            json.JSONDecodeError,
+            KeyError,
+            OSError,
+            TypeError,
+            ValueError,
+        ) as exc:
             return {
                 "status": "fail",
                 "duration_seconds": round(time.perf_counter() - started, 3),
@@ -230,45 +240,6 @@ def run_mcp_smoke() -> dict[str, Any]:
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait(timeout=5)
-
-
-def render_svg(summary: dict[str, Any]) -> str:
-    checks = summary["checks"]
-    rows = []
-    width = 860
-    y = 122
-    for check in checks:
-        passed = check["status"] == "pass"
-        color = "#1f9d55" if passed else "#c43b3b"
-        label = check["name"].replace("_", " ").title()
-        duration = check.get("duration_seconds", 0)
-        bar_width = max(28, min(460, int(float(duration) * 120) + 44))
-        rows.append(
-            f'<text x="44" y="{y}" class="label">{label}</text>'
-            f'<rect x="286" y="{y - 17}" width="{bar_width}" height="24" rx="4" fill="{color}"/>'
-            f'<text x="{304 + bar_width}" y="{y}" class="value">{check["status"].upper()} · {duration}s</text>'
-        )
-        y += 48
-    generated = summary["generated_at"].replace("T", " ").replace("+00:00", " UTC")
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="360" viewBox="0 0 {width} 360" role="img" aria-labelledby="title desc">
-  <title id="title">FastContext Agent Tools evaluation summary</title>
-  <desc id="desc">Wrapper evaluation showing unit tests, MCP smoke test, and generated documentation artifacts.</desc>
-  <style>
-    .title {{ font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17202a; }}
-    .subtitle {{ font: 400 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #52616b; }}
-    .label {{ font: 600 15px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #1f2933; }}
-    .value {{ font: 600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #1f2933; }}
-    .note {{ font: 400 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #52616b; }}
-  </style>
-  <rect width="860" height="360" fill="#f8faf9"/>
-  <rect x="24" y="24" width="812" height="312" rx="8" fill="#ffffff" stroke="#d6dde2"/>
-  <text x="44" y="68" class="title">FastContext MCP Wrapper Evaluation</text>
-  <text x="44" y="94" class="subtitle">Generated {generated}</text>
-  {''.join(rows)}
-  <text x="44" y="306" class="note">Scope: wrapper protocol, citation parsing, trace output, and path safety.</text>
-  <text x="44" y="326" class="note">Model-quality results are cited separately from Microsoft FastContext.</text>
-</svg>
-"""
 
 
 def main() -> int:
@@ -297,7 +268,7 @@ def main() -> int:
         },
         "checks": checks,
         "limitations": [
-            "This evaluation uses a fake fastcontext CLI to verify wrapper behavior without a GPU or model endpoint.",
+            "This evaluation uses a fake fastcontext.cli package to verify wrapper behavior without a GPU or model endpoint.",
             "FastContext model-quality claims are not reproduced here; see the Microsoft FastContext paper and model card.",
         ],
     }

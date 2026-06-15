@@ -12,14 +12,14 @@ This project has two evaluation layers:
 The repeatable local check is:
 
 ```bash
-python evaluation/run_wrapper_eval.py
+python -m evaluation.run_wrapper_eval
 ```
 
 Last checked result committed in `evaluation/wrapper-eval.json`:
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| Unit tests | PASS | 5 tests covering citation parsing, tool listing, health response, and path allowlist behavior |
+| Unit tests | PASS | 7 tests covering citation parsing, tool listing, bundled module execution, health response, and path allowlist behavior |
 | MCP stdio smoke | PASS | Starts the server, sends JSON-RPC framed requests, verifies three tools, parses two citations, writes a trajectory, and rejects a repo outside the allowlist |
 
 Scope:
@@ -32,7 +32,7 @@ Scope:
 
 Limitation:
 
-- This wrapper evaluation uses a fake `fastcontext` CLI so it can run without a GPU or model endpoint.
+- This wrapper evaluation uses a fake `fastcontext.cli` package so it can run without a GPU or model endpoint.
 - It proves the integration wrapper, not FastContext model quality.
 
 ## Upstream Model Evidence
@@ -46,4 +46,3 @@ The model-quality claims should be attributed to Microsoft FastContext:
 Microsoft reports that FastContext is a lightweight repository-exploration subagent using read-only `READ`, `GLOB`, and `GREP` tools, returning compact file-line citations. Their reported Mini-SWE-Agent integration results include up to 5.5 score improvement and up to 60% main-agent token reduction across SWE-bench Multilingual, SWE-bench Pro, and SWE-QA.
 
 This repository does not re-run those benchmarks. Reproducing them requires the upstream benchmark harness, task datasets, and configured main-agent and FastContext model endpoints.
-

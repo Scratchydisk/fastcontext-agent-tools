@@ -4,18 +4,12 @@
 
 ## 必要条件
 
-- Python 3.10+：この MCP wrapper 用。
-- Python 3.12+：上流 FastContext CLI 用。
-- Microsoft FastContext CLI：<https://github.com/microsoft/fastcontext>
+- Python 3.12+。
 - FastContext model を提供する OpenAI-compatible endpoint。
 
-上流 CLI のインストール例：
-
-```bash
-git clone https://github.com/microsoft/fastcontext
-cd fastcontext
-uv tool install .
-```
+この package をインストールすると、Microsoft 公式 source の固定 revision
+から FastContext も同時にインストールされます。別途 clone や
+`uv tool install` を実行する必要はありません。
 
 ## この MCP Server のインストール
 
@@ -59,7 +53,7 @@ export FASTCONTEXT_ALLOWED_ROOTS="/path/to/repos"
 
 ## MCP Tools
 
-- `fastcontext_health`：CLI、endpoint 設定、allowlist を確認します。
+- `fastcontext_health`：同梱 FastContext module、endpoint 設定、allowlist を確認します。
 - `fastcontext_explore`：自然言語 query を FastContext に送り、citations と raw output を返します。
 - `fastcontext_explore_with_trace`：探索結果に加えて trajectory JSONL を保存します。
 
@@ -79,5 +73,4 @@ export FASTCONTEXT_ALLOWED_ROOTS="/path/to/repos"
 
 LLM agent に渡す一文：
 
-> `https://github.com/Jakevin/fastcontext-agent-tools` をインストールし、`python -m pip install -e .` を実行して、`python -m fastcontext_mcp` を stdio MCP server として設定し、`BASE_URL`、`MODEL`、`API_KEY`、`FASTCONTEXT_ALLOWED_ROOTS` を指定したうえで `skills/fastcontext-explorer` を有効化してください。
-
+> `https://github.com/Jakevin/fastcontext-agent-tools` をインストールしてください。package のインストール時に Microsoft FastContext も同時に導入されます。`python -m fastcontext_mcp` を stdio MCP server として設定し、`BASE_URL`、`MODEL`、`API_KEY`、`FASTCONTEXT_ALLOWED_ROOTS` を指定したうえで `skills/fastcontext-explorer` を有効化してください。

@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fastcontext-agent-tools"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP server and Codex skill for using Microsoft FastContext as a repository exploration subagent."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = "MIT"
 authors = [
   { name = "Jakevin" }
@@ -20,7 +20,9 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Topic :: Software Development"
 ]
-dependencies = []
+dependencies = [
+  "fastcontext @ https://github.com/microsoft/fastcontext/archive/936c0052f19b0936be51a24f8a76cfe2c47580e6.tar.gz"
+]
 
 [project.scripts]
 fastcontext-mcp = "fastcontext_mcp.server:main"
@@ -33,3 +35,5 @@ dev = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/fastcontext_mcp"]
 
+[tool.hatch.metadata]
+allow-direct-references = true

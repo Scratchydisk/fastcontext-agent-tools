@@ -9,22 +9,22 @@ FastContext answers one narrow question for a coding agent:
 
 > Which files and line ranges should the main agent inspect before solving this task?
 
-This repository provides the integration layer:
+This repository provides the complete integration:
 
-- `fastcontext-mcp`: a Python stdio MCP server with no runtime dependencies.
+- `fastcontext-mcp`: a Python stdio MCP server that installs Microsoft FastContext as a pinned runtime dependency.
 - `skills/fastcontext-explorer`: a Codex skill that teaches an agent when to delegate repository exploration.
 - Evaluation artifacts for the wrapper layer.
 - MCP setup guides in English, Traditional Chinese, and Japanese.
 
 It does not bundle model weights, run inference, or modify repositories. The MCP
-server calls the upstream `fastcontext` CLI and returns candidate file-line
-citations for the main agent to verify.
+server runs the bundled `fastcontext.cli` module in the same Python environment
+and returns candidate file-line citations for the main agent to verify.
 
 ## One-Line LLM Agent Install Prompt
 
 Ask an LLM agent:
 
-> Install FastContext Agent Tools from `https://github.com/Jakevin/fastcontext-agent-tools`, run `python -m pip install -e .`, configure `python -m fastcontext_mcp` as a stdio MCP server with `BASE_URL`, `MODEL`, `API_KEY`, and `FASTCONTEXT_ALLOWED_ROOTS`, then enable `skills/fastcontext-explorer`.
+> Install FastContext Agent Tools from `https://github.com/Jakevin/fastcontext-agent-tools`; its package installation includes Microsoft FastContext. Configure `python -m fastcontext_mcp` as a stdio MCP server with `BASE_URL`, `MODEL`, `API_KEY`, and `FASTCONTEXT_ALLOWED_ROOTS`, then enable `skills/fastcontext-explorer`.
 
 Direct install command for Codex-style local skills:
 
@@ -60,18 +60,12 @@ works too.
 
 ## Requirements
 
-- Python 3.10+ for this MCP wrapper.
-- Python 3.12+ for the upstream FastContext CLI.
-- The upstream FastContext CLI installed from <https://github.com/microsoft/fastcontext>.
+- Python 3.12+.
 - An OpenAI-compatible endpoint serving a FastContext-compatible model.
 
-Typical upstream setup:
-
-```bash
-git clone https://github.com/microsoft/fastcontext
-cd fastcontext
-uv tool install .
-```
+Installing this package also installs Microsoft FastContext from the pinned
+official source revision. No separate FastContext checkout or CLI installation
+is required.
 
 Endpoint environment:
 
@@ -116,7 +110,7 @@ Localized MCP guides:
 
 ### `fastcontext_health`
 
-Checks whether the wrapper can find the upstream `fastcontext` CLI and whether
+Checks whether the bundled `fastcontext.cli` module is importable and whether
 the endpoint environment is set.
 
 ### `fastcontext_explore`
@@ -165,7 +159,7 @@ still read the cited files before changing code.
 Wrapper evaluation is repeatable:
 
 ```bash
-python evaluation/run_wrapper_eval.py
+python -m evaluation.run_wrapper_eval
 ```
 
 Current committed result:
@@ -180,7 +174,7 @@ Artifacts:
 - Result JSON: [evaluation/wrapper-eval.json](evaluation/wrapper-eval.json)
 - Full report: [docs/REPORT.md](docs/REPORT.md)
 
-The local evaluation uses a fake upstream `fastcontext` CLI so it can validate
+The local evaluation uses a fake `fastcontext.cli` package so it can validate
 the MCP wrapper without a GPU or model endpoint. FastContext model-quality
 claims are attributed to Microsoft FastContext and are not reproduced here.
 
@@ -201,7 +195,7 @@ python /path/to/skill-creator/scripts/quick_validate.py skills/fastcontext-explo
 Run the wrapper evaluation:
 
 ```bash
-python evaluation/run_wrapper_eval.py
+python -m evaluation.run_wrapper_eval
 ```
 
 ## Safety Notes

@@ -75,11 +75,10 @@ After receiving citations:
 
 ## Failure Handling
 
-If `fastcontext_health` reports missing `fastcontext`, ask the user to install the upstream CLI or run without this skill.
+If `fastcontext_health` reports that `fastcontext.cli` is unavailable, reinstall `fastcontext-agent-tools`; Microsoft FastContext is included as a package dependency.
 
 If `BASE_URL` or `MODEL` is missing, ask the user to configure the FastContext endpoint.
 
 If `repo_path` is rejected, use a path under `FASTCONTEXT_ALLOWED_ROOTS` or ask the user to update that allowlist.
 
 If FastContext times out, retry once with a narrower query or lower `max_turns`.
-

@@ -4,12 +4,12 @@
 
 FastContext Agent Tools packages Microsoft FastContext for practical agent use:
 
-- A zero-dependency Python MCP stdio server.
+- A Python MCP stdio server with Microsoft FastContext pinned as a runtime dependency.
 - A Codex skill that teaches an agent when to delegate repository exploration.
 - English-first documentation plus Chinese and Japanese MCP setup guides.
 - A repeatable wrapper evaluation with committed JSON and SVG evidence.
 
-The project is intentionally narrow. It does not reimplement FastContext, download model weights, or modify repositories. It exposes the upstream `fastcontext` CLI as a read-only localization tool that returns file-line citations for the main coding agent to verify.
+The project is intentionally narrow. It does not reimplement FastContext, download model weights, or modify repositories. It installs the official FastContext package and runs `fastcontext.cli` with the MCP server's Python interpreter, returning file-line citations for the main coding agent to verify.
 
 ![Architecture](assets/architecture.svg)
 
@@ -31,7 +31,7 @@ The `microsoft/FastContext-1.0-4B-SFT` model card identifies the model as a 4B-p
 
 The MCP server exposes:
 
-- `fastcontext_health`: check the upstream CLI, endpoint variables, and allowed roots.
+- `fastcontext_health`: check the bundled FastContext module, endpoint variables, and allowed roots.
 - `fastcontext_explore`: run FastContext and return parsed citations plus raw output.
 - `fastcontext_explore_with_trace`: run FastContext and write a trajectory JSONL file.
 
@@ -69,7 +69,7 @@ Results:
 - 2 passed.
 - 0 failed.
 
-The evaluation starts the MCP server over stdio, sends JSON-RPC framed requests, verifies the tool list, checks health behavior, runs an exploration call through a fake upstream `fastcontext` CLI, parses two citations, writes a trajectory, and verifies that repositories outside the allowlist are rejected.
+The evaluation starts the MCP server over stdio, sends JSON-RPC framed requests, verifies the tool list, checks health behavior, runs an exploration call through a fake `fastcontext.cli` package, parses two citations, writes a trajectory, and verifies that repositories outside the allowlist are rejected.
 
 This is not a FastContext model benchmark. Model-quality claims are sourced from Microsoft FastContext because this environment does not provide a GPU endpoint or the full SWE-bench benchmark setup.
 
@@ -77,11 +77,10 @@ This is not a FastContext model benchmark. Model-quality claims are sourced from
 
 For an LLM agent, the intended instruction is:
 
-> Install FastContext Agent Tools from `https://github.com/Jakevin/fastcontext-agent-tools`, run `python -m pip install -e .`, configure `python -m fastcontext_mcp` as a stdio MCP server with `BASE_URL`, `MODEL`, `API_KEY`, and `FASTCONTEXT_ALLOWED_ROOTS`, then enable `skills/fastcontext-explorer`.
+> Install FastContext Agent Tools from `https://github.com/Jakevin/fastcontext-agent-tools`; its package installation includes Microsoft FastContext. Configure `python -m fastcontext_mcp` as a stdio MCP server with `BASE_URL`, `MODEL`, `API_KEY`, and `FASTCONTEXT_ALLOWED_ROOTS`, then enable `skills/fastcontext-explorer`.
 
 ## Known Limitations
 
-- The upstream `fastcontext` CLI must be installed separately.
 - A FastContext-compatible OpenAI endpoint must already be running.
 - This wrapper currently supports stdio MCP only.
 - The package is not yet published to PyPI.

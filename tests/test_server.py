@@ -2,12 +2,21 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from subprocess import CompletedProcess
 from unittest import mock
 
-from fastcontext_mcp.server import handle_request, parse_citations, resolve_repo_path
+from fastcontext_mcp import runtime
+from fastcontext_mcp.runtime import (
+    health,
+    parse_citations,
+    resolve_repo_path,
+    run_fastcontext,
+)
+from fastcontext_mcp.server import handle_request
 
 
 class ServerTests(unittest.TestCase):
@@ -51,7 +60,41 @@ class ServerTests(unittest.TestCase):
         assert response is not None
         text = response["result"]["content"][0]["text"]
         payload = json.loads(text)
-        self.assertIn("fastcontext_cli", payload)
+        self.assertIn("fastcontext_module", payload)
+
+    def test_health_uses_bundled_fastcontext_module_without_path_cli(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {"BASE_URL": "https://example.test/v1", "MODEL": "fastcontext"},
+            clear=True,
+        ):
+            with mock.patch.object(runtime, "_fastcontext_available", return_value=True):
+                payload = health()
+
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["fastcontext_module"], "fastcontext.cli")
+
+    def test_run_fastcontext_uses_current_python_module(self) -> None:
+        completed = CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout="<final_answer>\nsrc/app.py:1-3\n</final_answer>\n",
+            stderr="",
+        )
+        with tempfile.TemporaryDirectory() as root:
+            with mock.patch.dict(os.environ, {"FASTCONTEXT_ALLOWED_ROOTS": root}):
+                with mock.patch.object(runtime, "_fastcontext_available", return_value=True):
+                    with mock.patch(
+                        "fastcontext_mcp.runtime.subprocess.run",
+                        return_value=completed,
+                    ) as run:
+                        result = run_fastcontext(
+                            {"repo_path": root, "query": "Locate app"},
+                        )
+
+        self.assertTrue(result["ok"])
+        command = run.call_args.args[0]
+        self.assertEqual(command[:3], [sys.executable, "-m", "fastcontext.cli"])
 
     def test_relative_allowed_root_defaults_to_cwd(self) -> None:
         with tempfile.TemporaryDirectory() as root:
@@ -65,4 +108,3 @@ class ServerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

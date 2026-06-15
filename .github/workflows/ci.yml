@@ -23,4 +23,4 @@ jobs:
         run: PYTHONPATH=src python -m unittest discover -s tests
 
       - name: Run wrapper evaluation
-        run: python evaluation/run_wrapper_eval.py
+        run: python -m evaluation.run_wrapper_eval

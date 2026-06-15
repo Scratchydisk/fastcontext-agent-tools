@@ -2,17 +2,18 @@
 
 Use this reference only when the user asks to install, configure, or debug the FastContext MCP integration.
 
-## Upstream FastContext CLI
+## Bundled FastContext Runtime
 
-Install Microsoft's FastContext CLI from the upstream repository:
+Installing `fastcontext-agent-tools` also installs Microsoft FastContext from a
+pinned official source revision:
 
 ```bash
-git clone https://github.com/microsoft/fastcontext
-cd fastcontext
-uv tool install .
+python -m pip install -e .
 ```
 
-The MCP wrapper calls the `fastcontext` executable. It does not download model weights or start an inference server.
+The MCP server runs `python -m fastcontext.cli` with the same Python interpreter.
+There is no separate CLI installation or PATH requirement. The package does not
+download model weights or start an inference server.
 
 ## Endpoint Environment
 
@@ -35,4 +36,3 @@ export FASTCONTEXT_ALLOWED_ROOTS="/Users/me/projects:/Users/me/work"
 ```
 
 If unset, the MCP server allows only repositories under the directory where the server process starts.
-

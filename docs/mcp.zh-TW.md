@@ -4,18 +4,11 @@
 
 ## 前置需求
 
-- Python 3.10+：執行本 MCP wrapper。
-- Python 3.12+：執行上游 FastContext CLI。
-- 已安裝 Microsoft FastContext CLI：<https://github.com/microsoft/fastcontext>
+- Python 3.12+。
 - 已啟動 OpenAI-compatible FastContext model endpoint。
 
-上游 CLI 安裝範例：
-
-```bash
-git clone https://github.com/microsoft/fastcontext
-cd fastcontext
-uv tool install .
-```
+安裝本 package 時會從 Microsoft 官方 source 的固定版本一併安裝
+FastContext，不需要額外 clone 或執行 `uv tool install`。
 
 ## 安裝本 MCP Server
 
@@ -59,7 +52,7 @@ export FASTCONTEXT_ALLOWED_ROOTS="/path/to/repos"
 
 ## 工具
 
-- `fastcontext_health`：檢查 CLI、endpoint 變數與 repo allowlist。
+- `fastcontext_health`：檢查內建 FastContext module、endpoint 變數與 repo allowlist。
 - `fastcontext_explore`：送出自然語言探索 query，回傳 citations 與 raw output。
 - `fastcontext_explore_with_trace`：同上，但另外寫出 FastContext trajectory JSONL。
 
@@ -79,5 +72,4 @@ export FASTCONTEXT_ALLOWED_ROOTS="/path/to/repos"
 
 給 LLM agent 的一句話：
 
-> 請安裝 `https://github.com/Jakevin/fastcontext-agent-tools`，執行 `python -m pip install -e .`，把 `python -m fastcontext_mcp` 設成 stdio MCP server，設定 `BASE_URL`、`MODEL`、`API_KEY`、`FASTCONTEXT_ALLOWED_ROOTS`，並啟用 `skills/fastcontext-explorer`。
-
+> 請安裝 `https://github.com/Jakevin/fastcontext-agent-tools`；安裝 package 時會一併安裝 Microsoft FastContext。把 `python -m fastcontext_mcp` 設成 stdio MCP server，設定 `BASE_URL`、`MODEL`、`API_KEY`、`FASTCONTEXT_ALLOWED_ROOTS`，並啟用 `skills/fastcontext-explorer`。
