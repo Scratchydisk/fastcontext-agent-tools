@@ -17,6 +17,10 @@
   <text x="46" y="58" class="title">FastContext Agent Tools</text>
   <text x="46" y="84" class="sub">Read-only repository localization for coding agents through MCP and a Codex skill.</text>
 
+  <path d="M850 138 V112 H375 V138" fill="none" stroke="#36506c" stroke-width="2.2" marker-end="url(#arrow)"/>
+  <rect x="474" y="101" width="278" height="22" rx="4" fill="#f7faf8"/>
+  <text x="486" y="116" class="small">file-line citations back to the main agent</text>
+
   <rect x="46" y="138" width="178" height="112" rx="8" fill="#ffffff" stroke="#cbd6dc"/>
   <text x="72" y="176" class="box-title">Coding Agent</text>
   <text x="72" y="202" class="box-text">Receives task</text>
@@ -50,8 +54,4 @@
   <line x1="704" y1="194" x2="766" y2="194" stroke="#36506c" stroke-width="2.2" marker-end="url(#arrow)"/>
   <line x1="615" y1="250" x2="615" y2="300" stroke="#36506c" stroke-width="2.2" marker-end="url(#arrow)"/>
   <line x1="850" y1="250" x2="850" y2="300" stroke="#36506c" stroke-width="2.2" marker-end="url(#arrow)"/>
-
-  <path d="M766 246 C710 284, 596 284, 464 238" fill="none" stroke="#36506c" stroke-width="2.2" marker-end="url(#arrow)"/>
-  <text x="498" y="286" class="small">file-line citations back to the main agent</text>
 </svg>
-
