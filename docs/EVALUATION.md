@@ -7,6 +7,12 @@ This project has two evaluation layers:
 
 ![Evaluation summary](assets/evaluation-summary.svg)
 
+The summary image is intentionally split into:
+
+- Before/after workflow impact from the upstream Microsoft FastContext
+  benchmark claims.
+- Local wrapper validation for this MCP package.
+
 ## Local Wrapper Evaluation
 
 The repeatable local check is:
@@ -19,7 +25,7 @@ Last checked result committed in `evaluation/wrapper-eval.json`:
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| Unit tests | PASS | 7 tests covering citation parsing, tool listing, bundled module execution, health response, and path allowlist behavior |
+| Unit tests | PASS | 13 tests covering citation parsing, tool listing, bundled module execution, health response, and path allowlist behavior |
 | MCP stdio smoke | PASS | Starts the server, sends JSON-RPC framed requests, verifies three tools, parses two citations, writes a trajectory, and rejects a repo outside the allowlist |
 
 Scope:
@@ -43,6 +49,6 @@ The model-quality claims should be attributed to Microsoft FastContext:
 - Model card: <https://huggingface.co/microsoft/FastContext-1.0-4B-SFT>
 - Paper: <https://arxiv.org/abs/2606.14066>
 
-Microsoft reports that FastContext is a lightweight repository-exploration subagent using read-only `READ`, `GLOB`, and `GREP` tools, returning compact file-line citations. Their reported Mini-SWE-Agent integration results include up to 5.5 score improvement and up to 60% main-agent token reduction across SWE-bench Multilingual, SWE-bench Pro, and SWE-QA.
+Microsoft reports that FastContext is a lightweight repository-exploration subagent using read-only `READ`, `GLOB`, and `GREP` tools, returning compact file-line citations. Their reported Mini-SWE-Agent integration results include up to 5.5 score improvement and up to 60.3% main-agent token reduction across SWE-bench Multilingual, SWE-bench Pro, and SWE-QA.
 
 This repository does not re-run those benchmarks. Reproducing them requires the upstream benchmark harness, task datasets, and configured main-agent and FastContext model endpoints.

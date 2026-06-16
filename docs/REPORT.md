@@ -23,7 +23,7 @@ Primary sources:
 - Hugging Face model card: <https://huggingface.co/microsoft/FastContext-1.0-4B-SFT>
 - arXiv paper: <https://arxiv.org/abs/2606.14066>
 
-The `microsoft/FastContext-1.0-4B-SFT` model card identifies the model as a 4B-parameter, BF16, MIT-licensed repository exploration model with up to 262K context. Microsoft reports Mini-SWE-Agent integration gains of up to 5.5 score and up to 60% main-agent token reduction.
+The `microsoft/FastContext-1.0-4B-SFT` model card identifies the model as a 4B-parameter, BF16, MIT-licensed repository exploration model with up to 262K context. Microsoft reports Mini-SWE-Agent integration gains of up to 5.5 score and up to 60.3% main-agent token reduction.
 
 ## What Was Built
 
@@ -61,7 +61,7 @@ The repository includes:
 
 ![Evaluation summary](assets/evaluation-summary.svg)
 
-Local wrapper evaluation was run on 2026-06-15 and committed as `evaluation/wrapper-eval.json`.
+Local wrapper evaluation was run on 2026-06-16 and committed as `evaluation/wrapper-eval.json`.
 
 Results:
 

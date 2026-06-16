@@ -156,6 +156,15 @@ still read the cited files before changing code.
 
 ![Evaluation summary](docs/assets/evaluation-summary.svg)
 
+The graphic separates two things:
+
+- The workflow effect reported by Microsoft FastContext: delegated repository
+  exploration can improve Mini-SWE-Agent results by up to 5.5 score and reduce
+  main-agent token use by up to 60.3%.
+- The local checks in this repository: the MCP wrapper starts, exposes tools,
+  parses FastContext-style citations, writes traces, and enforces the repo
+  allowlist.
+
 Wrapper evaluation is repeatable:
 
 ```bash
