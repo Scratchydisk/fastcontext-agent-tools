@@ -177,9 +177,10 @@ Local before/after FastContext impact data:
 - Latest aggregate run: MICE check-in localization used 7,039 direct tokens;
   FastContext missed the endpoint and required 10,910 tokens after verification
   plus fallback (+55.0%).
-- Latest aggregate run: Fanicon Android FCM localization used 2,279 direct
+- Latest aggregate run: FanPlan Android FCM localization used 2,279 direct
   tokens; FastContext cited nonexistent paths and required 2,360 tokens after
   fallback (+3.6%).
+- `FanPlan` is an anonymized local Android app fixture name used for reporting.
 - These local smoke tests do not match Microsoft's benchmark harness and do not
   reproduce the official gains yet.
 
@@ -200,7 +201,7 @@ Artifacts:
 - Evaluation notes: [docs/EVALUATION.md](docs/EVALUATION.md)
 - Result JSON: [evaluation/wrapper-eval.json](evaluation/wrapper-eval.json)
 - MICE before/after token smoke test: [evaluation/mice-checkin-before-after.json](evaluation/mice-checkin-before-after.json)
-- Fanicon before/after token smoke test: [evaluation/fanicon-fcm-before-after.json](evaluation/fanicon-fcm-before-after.json)
+- FanPlan before/after token smoke test: [evaluation/fanplan-fcm-before-after.json](evaluation/fanplan-fcm-before-after.json)
 - Latest aggregate before/after run: [evaluation/local-before-after-results.json](evaluation/local-before-after-results.json)
 - Repeatable benchmark harness: [evaluation/token_benchmark.py](evaluation/token_benchmark.py)
 - Full report: [docs/REPORT.md](docs/REPORT.md)

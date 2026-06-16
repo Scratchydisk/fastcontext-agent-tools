@@ -11,7 +11,9 @@ The summary image is intentionally split by data source and evidence type:
 
 - Official Microsoft FastContext benchmark data.
 - Local wrapper QA checks from this repository.
-- Local before/after token smoke tests for MICE and Fanicon Android.
+- Local before/after token smoke tests for MICE and FanPlan Android.
+
+`FanPlan` is an anonymized local Android app fixture name used for reporting.
 
 ## Local Integration QA
 
@@ -52,7 +54,7 @@ Two local before/after token smoke tests are committed:
 
 - `evaluation/local-before-after-results.json` for the latest aggregate run
 - `evaluation/mice-checkin-before-after.json`
-- `evaluation/fanicon-fcm-before-after.json`
+- `evaluation/fanplan-fcm-before-after.json`
 
 Token measurement uses `tiktoken` `cl100k_base` as a consistent local estimator
 for main-agent context. It does not include FastContext's internal endpoint
@@ -86,7 +88,7 @@ Ground truth:
 For this local task, FastContext did not produce a token win when correctness is
 required. The raw response was short, but the missed citation forced fallback.
 
-### Fanicon Android FCM
+### FanPlan Android FCM
 
 Question:
 
@@ -97,18 +99,20 @@ Question:
 Project under test:
 
 ```text
-/Users/jakevinlo/project/AndroidProject/Fanicon_Android
+/path/to/FanPlan_Android
 ```
+
+The local source path and package names are anonymized in this public artifact.
 
 Ground truth:
 
-- `android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt`
+- `android/app/src/main/java/com/example/fanplan/android/FanPlanFirebaseMessagingService.kt`
 - `android/app/src/main/AndroidManifest.xml`
 
 | Condition | Main-agent context tokens | Correctly found ground truth? | Notes |
 | --- | ---: | --- | --- |
 | Direct exploration | 2,279 | Yes | Search FCM symbols, then read service and manifest ranges |
-| FastContext raw output | 81 | No | Cited nonexistent Fanicon paths |
+| FastContext raw output | 81 | No | Cited nonexistent FanPlan paths |
 | FastContext cited-file verification plus fallback | 2,360 | Yes | No cited file could be read, then fallback; +3.6% tokens versus direct |
 
 For this local task, FastContext again returned a short answer but did not
@@ -123,6 +127,8 @@ uv run --extra dev python -m evaluation.token_benchmark evaluation/token-benchma
 ```
 
 It requires a FastContext-compatible endpoint and `tiktoken`.
+The FanPlan task uses anonymized paths in the committed task file; replace
+`/path/to/FanPlan_Android` with a local fixture path before re-running it.
 
 A broader local benchmark should compare the same coding tasks under two
 conditions:

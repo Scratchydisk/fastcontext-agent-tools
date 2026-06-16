@@ -73,7 +73,7 @@ The local QA starts the MCP server over stdio, sends JSON-RPC framed requests, a
 
 This wrapper QA is not a FastContext before/after benchmark.
 
-Separate local token smoke tests are committed under `evaluation/*before-after*.json`. In the latest aggregate run, the MICE check-in task used 7,039 estimated direct main-agent context tokens; FastContext missed `app/routers/logs.js`, and the correct fallback workflow used 10,910 tokens, or 55.0% more than direct exploration. In the Fanicon Android FCM task, direct exploration used 2,279 tokens; FastContext cited nonexistent paths, so the correct fallback workflow used 2,360 tokens, or 3.6% more than direct exploration.
+Separate local token smoke tests are committed under `evaluation/*before-after*.json`. In the latest aggregate run, the MICE check-in task used 7,039 estimated direct main-agent context tokens; FastContext missed `app/routers/logs.js`, and the correct fallback workflow used 10,910 tokens, or 55.0% more than direct exploration. In the FanPlan Android FCM task, direct exploration used 2,279 tokens; FastContext cited nonexistent paths, so the correct fallback workflow used 2,360 tokens, or 3.6% more than direct exploration.
 
 Model-quality and broader task-impact claims remain sourced from Microsoft FastContext because this repository has not re-run the full benchmark setup.
 

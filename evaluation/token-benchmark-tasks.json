@@ -29,14 +29,14 @@
       ]
     },
     {
-      "id": "fanicon_fcm_notification",
-      "repo_path": "/Users/jakevinlo/project/AndroidProject/Fanicon_Android",
+      "id": "fanplan_fcm_notification",
+      "repo_path": "/path/to/FanPlan_Android",
       "base_url": "http://127.0.0.1:11434/v1",
       "model": "fastcontext-tools-64k:latest",
       "max_turns": 6,
       "question": "Locate where FCM push notifications are received in the Android app, how RemoteMessage data is parsed into NotificationEntity, and where the Firebase messaging service is registered in the manifest.",
       "ground_truth_files": [
-        "android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt",
+        "android/app/src/main/java/com/example/fanplan/android/FanPlanFirebaseMessagingService.kt",
         "android/app/src/main/AndroidManifest.xml"
       ],
       "direct_commands": [
@@ -52,7 +52,7 @@
           "sed",
           "-n",
           "42,190p",
-          "android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt"
+          "android/app/src/main/java/com/example/fanplan/android/FanPlanFirebaseMessagingService.kt"
         ],
         [
           "sed",

@@ -69,12 +69,12 @@
       }
     },
     {
-      "id": "fanicon_fcm_notification",
-      "project_under_test": "/Users/jakevinlo/project/AndroidProject/Fanicon_Android",
+      "id": "fanplan_fcm_notification",
+      "project_under_test": "/path/to/FanPlan_Android",
       "question": "Locate where FCM push notifications are received in the Android app, how RemoteMessage data is parsed into NotificationEntity, and where the Firebase messaging service is registered in the manifest.",
       "tokenizer": "tiktoken cl100k_base",
       "ground_truth_files": [
-        "android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt",
+        "android/app/src/main/java/com/example/fanplan/android/FanPlanFirebaseMessagingService.kt",
         "android/app/src/main/AndroidManifest.xml"
       ],
       "direct_before": {
@@ -88,25 +88,25 @@
         "returncode": 0,
         "found_all_ground_truth_files": false,
         "ground_truth_hits": {
-          "android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt": false,
+          "android/app/src/main/java/com/example/fanplan/android/FanPlanFirebaseMessagingService.kt": false,
           "android/app/src/main/AndroidManifest.xml": false
         },
         "returned_existing_citations": [],
         "returned_missing_citations": [
           {
-            "raw": "/FANICON_ANDROID/android/app/src/main/java/com/fanicon/AndroidApp/AndroidAppFirebaseMessagingService.java",
+            "raw": "/FANPLAN_ANDROID/android/app/src/main/java/com/example/fanplan/app/AndroidAppFirebaseMessagingService.java",
             "rel": null,
             "start": 1,
             "end": 200
           },
           {
-            "raw": "/FANICON_ANDROID/android/app/build.gradle",
+            "raw": "/FANPLAN_ANDROID/android/app/build.gradle",
             "rel": null,
             "start": 4,
             "end": 7
           }
         ],
-        "stdout": "<final_answer>\n/FANICON_ANDROID/android/app/src/main/java/com/fanicon/AndroidApp/AndroidAppFirebaseMessagingService.java:1-200 (Core FCM receiver: FirebaseMessagingService implementation, parses RemoteMessage into NotificationEntity in onMessageReceived)\n/FANICON_ANDROID/android/app/build.gradle:4-7 (Firebase messaging plugin registration - adds firebase-messaging dependency)\n</final_answer>\n"
+        "stdout": "<final_answer>\n/FANPLAN_ANDROID/android/app/src/main/java/com/example/fanplan/app/AndroidAppFirebaseMessagingService.java:1-200 (Core FCM receiver: FirebaseMessagingService implementation, parses RemoteMessage into NotificationEntity in onMessageReceived)\n/FANPLAN_ANDROID/android/app/build.gradle:4-7 (Firebase messaging plugin registration - adds firebase-messaging dependency)\n</final_answer>\n"
       },
       "fastcontext_after_verified": {
         "main_agent_context_tokens": 2360,

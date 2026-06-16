@@ -1,10 +1,19 @@
 from __future__ import annotations
 
 from html import escape
-from typing import Any
+from typing import TypedDict
 
 
-def render_svg(summary: dict[str, Any]) -> str:
+class WrapperCheck(TypedDict):
+    status: str
+
+
+class WrapperSummary(TypedDict):
+    generated_at: str
+    checks: list[WrapperCheck]
+
+
+def render_svg(summary: WrapperSummary) -> str:
     checks = summary["checks"]
     passed = sum(1 for check in checks if check["status"] == "pass")
     failed = len(checks) - passed
@@ -62,7 +71,7 @@ def render_svg(summary: dict[str, Any]) -> str:
   <text x="526" y="354" class="metric">MICE</text>
   <text x="612" y="354" class="metric-label">7,039 direct -> 10,910 corrected (+55.0%)</text>
   <text x="526" y="390" class="fine">FastContext raw: 198 tokens, missed the endpoint.</text>
-  <text x="526" y="432" class="metric">Fanicon</text>
+  <text x="526" y="432" class="metric">FanPlan</text>
   <text x="640" y="432" class="metric-label">2,279 direct -> 2,360 corrected (+3.6%)</text>
   <text x="526" y="468" class="fine">FastContext raw: 81 tokens, cited nonexistent paths.</text>
   <text x="526" y="510" class="fine">Wrapper QA remains separate: {escape(wrapper_status)}.</text>
