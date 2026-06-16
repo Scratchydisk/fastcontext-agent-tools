@@ -9,14 +9,14 @@
   },
   "ground_truth": {
     "files": [
-      "android/app/src/main/java/com/example/fanplan/android/FanPlanFirebaseMessagingService.kt",
+      "android/app/src/main/java/com/company/fanplan/android/FanPlanFirebaseMessagingService.kt",
       "android/app/src/main/AndroidManifest.xml"
     ],
     "line_evidence": [
-      "android/app/src/main/java/com/example/fanplan/android/FanPlanFirebaseMessagingService.kt:42",
-      "android/app/src/main/java/com/example/fanplan/android/FanPlanFirebaseMessagingService.kt:46",
-      "android/app/src/main/java/com/example/fanplan/android/FanPlanFirebaseMessagingService.kt:73",
-      "android/app/src/main/java/com/example/fanplan/android/FanPlanFirebaseMessagingService.kt:87",
+      "android/app/src/main/java/com/company/fanplan/android/FanPlanFirebaseMessagingService.kt:42",
+      "android/app/src/main/java/com/company/fanplan/android/FanPlanFirebaseMessagingService.kt:46",
+      "android/app/src/main/java/com/company/fanplan/android/FanPlanFirebaseMessagingService.kt:73",
+      "android/app/src/main/java/com/company/fanplan/android/FanPlanFirebaseMessagingService.kt:87",
       "android/app/src/main/AndroidManifest.xml:141",
       "android/app/src/main/AndroidManifest.xml:146"
     ]
@@ -35,17 +35,17 @@
     "wall_seconds": 64.575,
     "found_all_ground_truth_files": false,
     "ground_truth_hits": {
-      "android/app/src/main/java/com/example/fanplan/android/FanPlanFirebaseMessagingService.kt": false,
+      "android/app/src/main/java/com/company/fanplan/android/FanPlanFirebaseMessagingService.kt": false,
       "android/app/src/main/AndroidManifest.xml": true
     },
     "returned_citations": [
-      "android/app/src/main/java/com/example/fanplan/core/analytics/firebase/FirebaseMessagingService.java:1-200",
+      "android/app/src/main/java/com/company/fanplan/core/analytics/firebase/FirebaseMessagingService.java:1-200",
       "android/app/src/main/AndroidManifest.xml:1-200",
-      "android/app/src/main/java/com/example/fanplan/core/analytics/firebase/FirebaseMessagingService.java:1-100",
-      "android/app/src/main/java/com/example/fanplan/core/analytics/firebase/FirebaseMessagingService.java:101-200"
+      "android/app/src/main/java/com/company/fanplan/core/analytics/firebase/FirebaseMessagingService.java:1-100",
+      "android/app/src/main/java/com/company/fanplan/core/analytics/firebase/FirebaseMessagingService.java:101-200"
     ],
     "missing_citations": [
-      "android/app/src/main/java/com/example/fanplan/core/analytics/firebase/FirebaseMessagingService.java"
+      "android/app/src/main/java/com/company/fanplan/core/analytics/firebase/FirebaseMessagingService.java"
     ]
   },
   "fastcontext_after_verified": {

@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
+from .token_benchmark_matrix import benchmark_task_matrix
+
 
 ROOT = Path(__file__).resolve().parents[1]
 FASTCONTEXT_COMMAND = [sys.executable, "-m", "fastcontext_mcp.fastcontext_cli"]
@@ -207,12 +209,22 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("task_file", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--matrix", action="store_true")
+    parser.add_argument("--repeats", type=int, default=1)
     args = parser.parse_args()
     task_data = json.loads(args.task_file.read_text(encoding="utf-8"))
     tasks = task_data["tasks"] if isinstance(task_data, dict) and "tasks" in task_data else [task_data]
+    if args.repeats < 1:
+        raise SystemExit("--repeats must be at least 1")
+    benchmark = (
+        [benchmark_task_matrix(task, args.repeats, benchmark_task) for task in tasks]
+        if args.matrix
+        else [benchmark_task(task) for task in tasks]
+    )
     results = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "results": [benchmark_task(task) for task in tasks],
+        "mode": "matrix" if args.matrix else "single",
+        "results": benchmark,
     }
     text = json.dumps(results, ensure_ascii=False, indent=2) + "\n"
     if args.output:

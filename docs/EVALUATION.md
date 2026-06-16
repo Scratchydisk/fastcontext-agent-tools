@@ -106,7 +106,7 @@ The local source path and package names are anonymized in this public artifact.
 
 Ground truth:
 
-- `android/app/src/main/java/com/example/fanplan/android/FanPlanFirebaseMessagingService.kt`
+- `android/app/src/main/java/com/company/fanplan/android/FanPlanFirebaseMessagingService.kt`
 - `android/app/src/main/AndroidManifest.xml`
 
 | Condition | Main-agent context tokens | Correctly found ground truth? | Notes |
@@ -118,12 +118,35 @@ Ground truth:
 For this local task, FastContext again returned a short answer but did not
 produce a correct localization without fallback.
 
+## Local Query-Variant Matrix
+
+A repeatable matrix run is committed in
+`evaluation/local-query-matrix-results.json`. It uses the same MICE check-in
+task with three query styles and two repeats per style:
+
+| Variant | Runs | Ground-truth hits | Best successful token delta | Notes |
+| --- | ---: | ---: | --- | --- |
+| `natural` | 2 | 0 | n/a | Returned a wrong script citation once and no final answer once |
+| `symbol_guided` | 2 | 0 | n/a | Drifted to a wrong nested app path once and no final answer once |
+| `official_style` | 2 | 0 | n/a | Returned frontend/script citations once and timed out once |
+
+The matrix did not reproduce the official token gains. The local endpoint used
+`fastcontext-tools-64k:latest`; Microsoft documents the official 4B explorer as
+`microsoft/FastContext-1.0-4B-SFT` served with SGLang, `qwen` tool-call parsing,
+and 262K context.
+
 ### Re-Running
 
 The repeatable harness is:
 
 ```bash
 uv run --extra dev python -m evaluation.token_benchmark evaluation/token-benchmark-tasks.json --output evaluation/local-before-after-results.json
+```
+
+For the query-variant matrix:
+
+```bash
+uv run --extra dev python -m evaluation.token_benchmark evaluation/token-benchmark-matrix-tasks.json --matrix --repeats 2 --output evaluation/local-query-matrix-results.json
 ```
 
 It requires a FastContext-compatible endpoint and `tiktoken`.

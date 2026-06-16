@@ -181,6 +181,10 @@ Local before/after FastContext impact data:
   tokens; FastContext cited nonexistent paths and required 2,360 tokens after
   fallback (+3.6%).
 - `FanPlan` is an anonymized local Android app fixture name used for reporting.
+- Query-variant matrix on the MICE task: 3 query styles, 2 repeats each, 0/6
+  successful ground-truth hits. The local endpoint exposed
+  `fastcontext-tools-64k:latest`, not the official
+  `microsoft/FastContext-1.0-4B-SFT` SGLang 262K setup.
 - These local smoke tests do not match Microsoft's benchmark harness and do not
   reproduce the official gains yet.
 
@@ -203,6 +207,8 @@ Artifacts:
 - MICE before/after token smoke test: [evaluation/mice-checkin-before-after.json](evaluation/mice-checkin-before-after.json)
 - FanPlan before/after token smoke test: [evaluation/fanplan-fcm-before-after.json](evaluation/fanplan-fcm-before-after.json)
 - Latest aggregate before/after run: [evaluation/local-before-after-results.json](evaluation/local-before-after-results.json)
+- MICE query-variant matrix: [evaluation/local-query-matrix-results.json](evaluation/local-query-matrix-results.json)
+- Matrix task spec: [evaluation/token-benchmark-matrix-tasks.json](evaluation/token-benchmark-matrix-tasks.json)
 - Repeatable benchmark harness: [evaluation/token_benchmark.py](evaluation/token_benchmark.py)
 - Full report: [docs/REPORT.md](docs/REPORT.md)
 
