@@ -173,13 +173,15 @@ Local integration QA:
 
 Local before/after FastContext impact data:
 
-- One local MICE check-in task has been run as a smoke benchmark.
-- Direct exploration used 6,979 main-agent context tokens and found the
-  ground-truth endpoint.
-- FastContext returned only 85 tokens, but missed the ground-truth endpoint.
-- After reading FastContext's cited files and falling back to direct
-  exploration to answer correctly, total main-agent context was 8,230 tokens
-  (+17.9% versus direct).
+- Two local smoke benchmarks have been run so far.
+- Latest aggregate run: MICE check-in localization used 7,039 direct tokens;
+  FastContext missed the endpoint and required 10,910 tokens after verification
+  plus fallback (+55.0%).
+- Latest aggregate run: Fanicon Android FCM localization used 2,279 direct
+  tokens; FastContext cited nonexistent paths and required 2,360 tokens after
+  fallback (+3.6%).
+- These local smoke tests do not match Microsoft's benchmark harness and do not
+  reproduce the official gains yet.
 
 Wrapper evaluation is repeatable:
 
@@ -198,6 +200,9 @@ Artifacts:
 - Evaluation notes: [docs/EVALUATION.md](docs/EVALUATION.md)
 - Result JSON: [evaluation/wrapper-eval.json](evaluation/wrapper-eval.json)
 - MICE before/after token smoke test: [evaluation/mice-checkin-before-after.json](evaluation/mice-checkin-before-after.json)
+- Fanicon before/after token smoke test: [evaluation/fanicon-fcm-before-after.json](evaluation/fanicon-fcm-before-after.json)
+- Latest aggregate before/after run: [evaluation/local-before-after-results.json](evaluation/local-before-after-results.json)
+- Repeatable benchmark harness: [evaluation/token_benchmark.py](evaluation/token_benchmark.py)
 - Full report: [docs/REPORT.md](docs/REPORT.md)
 
 The local evaluation uses a fake `fastcontext.cli` package so it can validate

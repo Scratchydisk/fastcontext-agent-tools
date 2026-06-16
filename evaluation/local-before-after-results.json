@@ -1,0 +1,121 @@
+{
+  "generated_at": "2026-06-16T01:55:30+00:00",
+  "results": [
+    {
+      "id": "mice_checkin_endpoint",
+      "project_under_test": "/Users/jakevinlo/project/NodeProject/mice-gcloud-version",
+      "question": "Locate the central check-in verification endpoint that writes Log records, marks tickets as used, updates subTickets, and may enqueue Printer jobs.",
+      "tokenizer": "tiktoken cl100k_base",
+      "ground_truth_files": [
+        "app/routers/logs.js"
+      ],
+      "direct_before": {
+        "main_agent_context_tokens": 7039,
+        "wall_seconds": 0.043,
+        "found_ground_truth": true
+      },
+      "fastcontext_after_raw": {
+        "main_agent_context_tokens": 198,
+        "wall_seconds": 46.019,
+        "returncode": 0,
+        "found_all_ground_truth_files": false,
+        "ground_truth_hits": {
+          "app/routers/logs.js": false
+        },
+        "returned_existing_citations": [
+          {
+            "raw": "/Users/jakevinlo/project/NodeProject/mice-gcloud-version/lib/routers/dashboard.js",
+            "rel": "lib/routers/dashboard.js",
+            "start": 116,
+            "end": 373,
+            "read_start": 96,
+            "read_end": 336
+          },
+          {
+            "raw": "/Users/jakevinlo/project/NodeProject/mice-gcloud-version/app/routers/dashboard.js",
+            "rel": "app/routers/dashboard.js",
+            "start": 57,
+            "end": 195,
+            "read_start": 37,
+            "read_end": 215
+          },
+          {
+            "raw": "/Users/jakevinlo/project/NodeProject/mice-gcloud-version/app/public/scripts/dashboard.js",
+            "rel": "app/public/scripts/dashboard.js",
+            "start": 455,
+            "end": 487,
+            "read_start": 435,
+            "read_end": 507
+          },
+          {
+            "raw": "/Users/jakevinlo/project/NodeProject/mice-gcloud-version/lib/public/scripts/dashboard.js",
+            "rel": "lib/public/scripts/dashboard.js",
+            "start": 455,
+            "end": 488,
+            "read_start": 435,
+            "read_end": 508
+          }
+        ],
+        "returned_missing_citations": [],
+        "stdout": "<final_answer>\n/Users/jakevinlo/project/NodeProject/mice-gcloud-version/lib/routers/dashboard.js:116-373 (Backend dashboard router - reads check-in counts for \"驗票\" locations, accumulates `checkinUser`, builds response data including `checkinUser`)\n/Users/jakevinlo/project/NodeProject/mice-gcloud-version/app/routers/dashboard.js:57-195 (Frontend dashboard router - reads check-in counts, accumulates `checkinUser`, builds response data including `checkinUser`)\n/Users/jakevinlo/project/NodeProject/mice-gcloud-version/app/public/scripts/dashboard.js:455-487 (Frontend dashboard script - consumes `checkinUser` from response, renders dashboard UI)\n/Users/jakevinlo/project/NodeProject/mice-gcloud-version/lib/public/scripts/dashboard.js:455-488 (Frontend dashboard script - consumes `checkinUser` from response, renders dashboard UI)\n</final_answer>\n"
+      },
+      "fastcontext_after_verified": {
+        "main_agent_context_tokens": 10910,
+        "fastcontext_output_tokens": 198,
+        "returned_file_read_tokens": 3673,
+        "fallback_direct_tokens": 7039,
+        "delta_vs_direct_tokens": 3871,
+        "delta_vs_direct_percent": 55.0
+      }
+    },
+    {
+      "id": "fanicon_fcm_notification",
+      "project_under_test": "/Users/jakevinlo/project/AndroidProject/Fanicon_Android",
+      "question": "Locate where FCM push notifications are received in the Android app, how RemoteMessage data is parsed into NotificationEntity, and where the Firebase messaging service is registered in the manifest.",
+      "tokenizer": "tiktoken cl100k_base",
+      "ground_truth_files": [
+        "android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt",
+        "android/app/src/main/AndroidManifest.xml"
+      ],
+      "direct_before": {
+        "main_agent_context_tokens": 2279,
+        "wall_seconds": 0.043,
+        "found_ground_truth": true
+      },
+      "fastcontext_after_raw": {
+        "main_agent_context_tokens": 81,
+        "wall_seconds": 30.582,
+        "returncode": 0,
+        "found_all_ground_truth_files": false,
+        "ground_truth_hits": {
+          "android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt": false,
+          "android/app/src/main/AndroidManifest.xml": false
+        },
+        "returned_existing_citations": [],
+        "returned_missing_citations": [
+          {
+            "raw": "/FANICON_ANDROID/android/app/src/main/java/com/fanicon/AndroidApp/AndroidAppFirebaseMessagingService.java",
+            "rel": null,
+            "start": 1,
+            "end": 200
+          },
+          {
+            "raw": "/FANICON_ANDROID/android/app/build.gradle",
+            "rel": null,
+            "start": 4,
+            "end": 7
+          }
+        ],
+        "stdout": "<final_answer>\n/FANICON_ANDROID/android/app/src/main/java/com/fanicon/AndroidApp/AndroidAppFirebaseMessagingService.java:1-200 (Core FCM receiver: FirebaseMessagingService implementation, parses RemoteMessage into NotificationEntity in onMessageReceived)\n/FANICON_ANDROID/android/app/build.gradle:4-7 (Firebase messaging plugin registration - adds firebase-messaging dependency)\n</final_answer>\n"
+      },
+      "fastcontext_after_verified": {
+        "main_agent_context_tokens": 2360,
+        "fastcontext_output_tokens": 81,
+        "returned_file_read_tokens": 0,
+        "fallback_direct_tokens": 2279,
+        "delta_vs_direct_tokens": 81,
+        "delta_vs_direct_percent": 3.6
+      }
+    }
+  ]
+}

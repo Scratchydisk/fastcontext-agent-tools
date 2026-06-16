@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-06-16T01:15:00+00:00",
+  "project_under_test": "/Users/jakevinlo/project/AndroidProject/Fanicon_Android",
+  "question": "Locate where FCM push notifications are received in the Android app, how RemoteMessage data is parsed into NotificationEntity, and where the Firebase messaging service is registered in the manifest.",
+  "tokenizer": "tiktoken cl100k_base",
+  "fastcontext_endpoint": {
+    "base_url": "http://127.0.0.1:11434/v1",
+    "model": "fastcontext-tools-64k:latest"
+  },
+  "ground_truth": {
+    "files": [
+      "android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt",
+      "android/app/src/main/AndroidManifest.xml"
+    ],
+    "line_evidence": [
+      "android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt:42",
+      "android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt:46",
+      "android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt:73",
+      "android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt:87",
+      "android/app/src/main/AndroidManifest.xml:141",
+      "android/app/src/main/AndroidManifest.xml:146"
+    ]
+  },
+  "direct_before": {
+    "strategy": "Main agent searched targeted FCM symbols, then read FaniconFirebaseMessagingService.kt:42-190 and AndroidManifest.xml:136-148.",
+    "main_agent_context_tokens": 2278,
+    "search_output_tokens": 1094,
+    "file_read_tokens": 1184,
+    "wall_seconds": 0.044,
+    "found_ground_truth": true
+  },
+  "fastcontext_after_raw": {
+    "strategy": "Main agent asked FastContext the same natural-language question.",
+    "main_agent_context_tokens": 154,
+    "wall_seconds": 64.575,
+    "found_all_ground_truth_files": false,
+    "ground_truth_hits": {
+      "android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt": false,
+      "android/app/src/main/AndroidManifest.xml": true
+    },
+    "returned_citations": [
+      "android/app/src/main/java/jp/co/thecoo/fanicon/core/analytics/firebase/FirebaseMessagingService.java:1-200",
+      "android/app/src/main/AndroidManifest.xml:1-200",
+      "android/app/src/main/java/jp/co/thecoo/fanicon/core/analytics/firebase/FirebaseMessagingService.java:1-100",
+      "android/app/src/main/java/jp/co/thecoo/fanicon/core/analytics/firebase/FirebaseMessagingService.java:101-200"
+    ],
+    "missing_citations": [
+      "android/app/src/main/java/jp/co/thecoo/fanicon/core/analytics/firebase/FirebaseMessagingService.java"
+    ]
+  },
+  "fastcontext_after_verified": {
+    "strategy": "Main agent read the citation ranges returned by FastContext.",
+    "main_agent_context_tokens": 1767,
+    "fastcontext_output_tokens": 154,
+    "returned_file_read_tokens": 1613,
+    "found_ground_truth": false
+  },
+  "fastcontext_after_corrected": {
+    "strategy": "FastContext output plus cited-file verification, then fallback to the direct exploration path because FastContext missed the real service file.",
+    "main_agent_context_tokens": 4045,
+    "found_ground_truth_after_fallback": true,
+    "delta_vs_direct_tokens": 1767,
+    "delta_vs_direct_percent": 77.6
+  },
+  "conclusion": "For this local Fanicon FCM task, FastContext reduced raw returned context but missed the real Kotlin service and cited a nonexistent Java path. A correct answer required fallback exploration, making total main-agent context 77.6% higher than direct exploration."
+}

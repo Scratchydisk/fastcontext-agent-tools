@@ -15,7 +15,7 @@ def render_svg(summary: dict[str, Any]) -> str:
     generated = summary["generated_at"].replace("T", " ").replace("+00:00", " UTC")
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-labelledby="title desc">
   <title id="title">FastContext evidence split by source</title>
-  <desc id="desc">Official Microsoft benchmark data is separated from this repository's local MICE token smoke test and integration QA checks.</desc>
+  <desc id="desc">Official Microsoft benchmark data is separated from this repository's local token smoke tests and integration QA checks.</desc>
   <style>
     .title {{ font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17202a; }}
     .subtitle {{ font: 400 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #52616b; }}
@@ -40,8 +40,8 @@ def render_svg(summary: dict[str, Any]) -> str:
   <text x="72" y="204" class="fine">Delegated exploration: FastContext returns candidate file-line citations.</text>
   <rect x="452" y="166" width="44" height="28" rx="14" fill="#334e68"/>
   <text x="462" y="185" class="pill">not</text>
-  <text x="520" y="184" class="body">Local smoke benchmark: one MICE task run.</text>
-  <text x="520" y="204" class="fine">Result is task-specific and did not show a token win.</text>
+  <text x="520" y="184" class="body">Local smoke benchmarks: two tasks run.</text>
+  <text x="520" y="204" class="fine">Current local results did not show token wins.</text>
 
   <rect x="48" y="250" width="410" height="300" rx="10" fill="#ecfdf5" stroke="#a7f3d0"/>
   <text x="72" y="288" class="card-title">Official Microsoft benchmark data</text>
@@ -56,18 +56,17 @@ def render_svg(summary: dict[str, Any]) -> str:
   <text x="72" y="500" class="fine">Use for upstream FastContext impact claims only.</text>
 
   <rect x="502" y="250" width="410" height="300" rx="10" fill="#eff6ff" stroke="#bfdbfe"/>
-  <text x="526" y="288" class="card-title">Local MICE token smoke test</text>
-  <text x="526" y="316" class="fine">Same check-in localization question, main-agent context only.</text>
+  <text x="526" y="288" class="card-title">Local token smoke tests</text>
+  <text x="526" y="316" class="fine">Same question before/after, main-agent context only.</text>
 
-  <text x="526" y="356" class="metric">6,979</text>
-  <text x="628" y="356" class="metric-label">direct tokens, found endpoint</text>
-  <text x="526" y="400" class="metric">85</text>
-  <text x="580" y="400" class="metric-label">FastContext raw tokens, missed endpoint</text>
-  <text x="526" y="444" class="metric">8,230</text>
-  <text x="628" y="444" class="metric-label">tokens after verification + fallback</text>
-  <text x="526" y="486" class="fine">Result: +17.9% tokens versus direct when correctness is required.</text>
-  <text x="526" y="512" class="fine">Wrapper QA remains separate: {escape(wrapper_status)}.</text>
+  <text x="526" y="354" class="metric">MICE</text>
+  <text x="612" y="354" class="metric-label">7,039 direct -> 10,910 corrected (+55.0%)</text>
+  <text x="526" y="390" class="fine">FastContext raw: 198 tokens, missed the endpoint.</text>
+  <text x="526" y="432" class="metric">Fanicon</text>
+  <text x="640" y="432" class="metric-label">2,279 direct -> 2,360 corrected (+3.6%)</text>
+  <text x="526" y="468" class="fine">FastContext raw: 81 tokens, cited nonexistent paths.</text>
+  <text x="526" y="510" class="fine">Wrapper QA remains separate: {escape(wrapper_status)}.</text>
 
-  <text x="48" y="594" class="note">Local smoke test is one MICE task, not a broad benchmark. Official task-impact claims remain attributed to Microsoft.</text>
+  <text x="48" y="594" class="note">Local smoke tests are small and task-specific. Official task-impact claims remain attributed to Microsoft.</text>
 </svg>
 """

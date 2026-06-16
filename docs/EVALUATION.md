@@ -11,7 +11,7 @@ The summary image is intentionally split by data source and evidence type:
 
 - Official Microsoft FastContext benchmark data.
 - Local wrapper QA checks from this repository.
-- One local MICE check-in before/after token smoke test.
+- Local before/after token smoke tests for MICE and Fanicon Android.
 
 ## Local Integration QA
 
@@ -46,10 +46,19 @@ Limitation:
 - This wrapper evaluation uses a fake `fastcontext.cli` package so it can run without a GPU or model endpoint.
 - It proves the integration wrapper, not FastContext model quality or before/after task impact.
 
-## Local Before/After Token Smoke Test
+## Local Before/After Token Smoke Tests
 
-One local before/after token smoke test is committed in
-`evaluation/mice-checkin-before-after.json`.
+Two local before/after token smoke tests are committed:
+
+- `evaluation/local-before-after-results.json` for the latest aggregate run
+- `evaluation/mice-checkin-before-after.json`
+- `evaluation/fanicon-fcm-before-after.json`
+
+Token measurement uses `tiktoken` `cl100k_base` as a consistent local estimator
+for main-agent context. It does not include FastContext's internal endpoint
+tokens.
+
+### MICE Check-In Endpoint
 
 Question:
 
@@ -68,19 +77,52 @@ Ground truth:
 - `POST /log/add`
 - Relevant lines include `192`, `233`, `275`, `304`, and `340`.
 
-Token measurement uses `tiktoken` `cl100k_base` as a consistent local estimator
-for main-agent context. It does not include FastContext's internal endpoint
-tokens.
-
 | Condition | Main-agent context tokens | Correctly found ground truth? | Notes |
 | --- | ---: | --- | --- |
-| Direct exploration | 6,979 | Yes | Search task symbols, then read `app/routers/logs.js:192-360` |
-| FastContext raw output | 85 | No | Returned short citations, but missed `app/routers/logs.js` |
-| FastContext cited-file verification | 1,251 | No | Read the files FastContext cited; still missed the endpoint |
-| FastContext plus fallback | 8,230 | Yes | Had to fall back to direct exploration; +17.9% tokens versus direct |
+| Direct exploration | 7,039 | Yes | Search task symbols, then read `app/routers/logs.js:192-360` |
+| FastContext raw output | 198 | No | Returned dashboard citations, but missed `app/routers/logs.js` |
+| FastContext cited-file verification plus fallback | 10,910 | Yes | Had to read incorrect citations, then fall back; +55.0% tokens versus direct |
 
 For this local task, FastContext did not produce a token win when correctness is
 required. The raw response was short, but the missed citation forced fallback.
+
+### Fanicon Android FCM
+
+Question:
+
+> Locate where FCM push notifications are received in the Android app, how
+> `RemoteMessage` data is parsed into `NotificationEntity`, and where the
+> Firebase messaging service is registered in the manifest.
+
+Project under test:
+
+```text
+/Users/jakevinlo/project/AndroidProject/Fanicon_Android
+```
+
+Ground truth:
+
+- `android/app/src/main/java/jp/co/thecoo/fanicon/android/FaniconFirebaseMessagingService.kt`
+- `android/app/src/main/AndroidManifest.xml`
+
+| Condition | Main-agent context tokens | Correctly found ground truth? | Notes |
+| --- | ---: | --- | --- |
+| Direct exploration | 2,279 | Yes | Search FCM symbols, then read service and manifest ranges |
+| FastContext raw output | 81 | No | Cited nonexistent Fanicon paths |
+| FastContext cited-file verification plus fallback | 2,360 | Yes | No cited file could be read, then fallback; +3.6% tokens versus direct |
+
+For this local task, FastContext again returned a short answer but did not
+produce a correct localization without fallback.
+
+### Re-Running
+
+The repeatable harness is:
+
+```bash
+uv run --extra dev python -m evaluation.token_benchmark evaluation/token-benchmark-tasks.json --output evaluation/local-before-after-results.json
+```
+
+It requires a FastContext-compatible endpoint and `tiktoken`.
 
 A broader local benchmark should compare the same coding tasks under two
 conditions:

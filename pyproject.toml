@@ -29,7 +29,8 @@ fastcontext-mcp = "fastcontext_mcp.server:main"
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=8"
+  "pytest>=8",
+  "tiktoken>=0.7"
 ]
 
 [tool.hatch.build.targets.wheel]
