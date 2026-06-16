@@ -13,7 +13,6 @@ This repository provides the complete integration:
 
 - `fastcontext-mcp`: a Python stdio MCP server that installs Microsoft FastContext as a pinned runtime dependency.
 - `skills/fastcontext-explorer`: a Codex skill that teaches an agent when to delegate repository exploration.
-- Evaluation artifacts for the wrapper layer.
 - MCP setup guides in English, Traditional Chinese, and Japanese.
 
 It does not bundle model weights, run inference, or modify repositories. The MCP
@@ -152,27 +151,9 @@ Use the skill when a coding task requires repository localization before
 editing. FastContext citations are candidate evidence; the main agent should
 still read the cited files before changing code.
 
-Artifacts:
+Additional project report:
 
-- Evaluation notes: [docs/EVALUATION.md](docs/EVALUATION.md)
-- Result JSON: [evaluation/wrapper-eval.json](evaluation/wrapper-eval.json)
-- MICE before/after token smoke test: [evaluation/mice-checkin-before-after.json](evaluation/mice-checkin-before-after.json)
-- FanPlan before/after token smoke test: [evaluation/fanplan-fcm-before-after.json](evaluation/fanplan-fcm-before-after.json)
-- Latest aggregate before/after run: [evaluation/local-before-after-results.json](evaluation/local-before-after-results.json)
-- Local endpoint readiness: [evaluation/local-endpoint-readiness.json](evaluation/local-endpoint-readiness.json)
-- Official serving preflight: [evaluation/local-official-serving-preflight.json](evaluation/local-official-serving-preflight.json)
-- Official benchmark readiness: [evaluation/local-official-benchmark-readiness.json](evaluation/local-official-benchmark-readiness.json)
-- MICE query-variant matrix: [evaluation/local-query-matrix-results.json](evaluation/local-query-matrix-results.json)
-- Matrix task spec: [evaluation/token-benchmark-matrix-tasks.json](evaluation/token-benchmark-matrix-tasks.json)
-- Repeatable benchmark harness: [evaluation/token_benchmark.py](evaluation/token_benchmark.py)
-- Endpoint readiness checker: [evaluation/endpoint_readiness.py](evaluation/endpoint_readiness.py)
-- Official serving preflight checker: [evaluation/official_serving_preflight.py](evaluation/official_serving_preflight.py)
-- Official benchmark readiness checker: [evaluation/official_benchmark_readiness.py](evaluation/official_benchmark_readiness.py)
 - Full report: [docs/REPORT.md](docs/REPORT.md)
-
-The local evaluation uses a fake `fastcontext.cli` package so it can validate
-the MCP wrapper without a GPU or model endpoint. FastContext model-quality
-claims are attributed to Microsoft FastContext and are not reproduced here.
 
 ## Development
 
@@ -186,12 +167,6 @@ Validate the bundled Codex skill:
 
 ```bash
 python /path/to/skill-creator/scripts/quick_validate.py skills/fastcontext-explorer
-```
-
-Run the wrapper evaluation:
-
-```bash
-python -m evaluation.run_wrapper_eval
 ```
 
 ## Safety Notes
