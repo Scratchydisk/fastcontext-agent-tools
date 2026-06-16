@@ -12,18 +12,23 @@ from evaluation.endpoint_readiness import JsonValue
 from evaluation.official_benchmark_datasets import (
     DatasetProbe,
     collect_official_dataset_probes,
-    dataset_probes_passed,
 )
 from evaluation.official_benchmark_env import EnvConfigCheck, check_env_config
 from evaluation.official_benchmark_images import (
     ImageManifestProbe,
     collect_official_image_probes,
-    image_probes_passed,
+)
+from evaluation.official_benchmark_harness import (
+    HarnessProbe,
+    collect_official_harness_probes,
+)
+from evaluation.official_benchmark_policy import (
+    collect_blockers,
+    collect_warnings,
 )
 from evaluation.official_benchmark_probes import (
     CommandProbe,
     collect_official_command_probes,
-    probes_passed,
 )
 from evaluation.official_serving_preflight import read_bool
 from evaluation.official_benchmark_tools import ToolAvailability, collect_tools
@@ -71,6 +76,7 @@ class OfficialBenchmarkReadiness:
     command_probes: list[CommandProbe]
     dataset_probes: list[DatasetProbe]
     image_probes: list[ImageManifestProbe]
+    harness_probes: list[HarnessProbe]
     official_commands: list[str]
     blockers: list[str]
     warnings: list[str]
@@ -84,6 +90,7 @@ def evaluate_benchmark_readiness(
     command_probes: list[CommandProbe] | None = None,
     dataset_probes: list[DatasetProbe] | None = None,
     image_probes: list[ImageManifestProbe] | None = None,
+    harness_probes: list[HarnessProbe] | None = None,
 ) -> OfficialBenchmarkReadiness:
     missing_files = missing_required_files(upstream_root)
     env_config = check_env_config(config_path)
@@ -91,6 +98,7 @@ def evaluate_benchmark_readiness(
     probes = list(command_probes or [])
     datasets = list(dataset_probes or [])
     images = list(image_probes or [])
+    harness = list(harness_probes or [])
     blockers = collect_blockers(
         upstream_root=upstream_root,
         missing_files=missing_files,
@@ -100,8 +108,9 @@ def evaluate_benchmark_readiness(
         command_probes=probes,
         dataset_probes=datasets,
         image_probes=images,
+        harness_probes=harness,
     )
-    warnings = collect_warnings(upstream_root, probes, datasets, images)
+    warnings = collect_warnings(upstream_root, probes, datasets, images, harness)
     return OfficialBenchmarkReadiness(
         ready=not blockers,
         upstream_root=str(upstream_root.resolve()) if upstream_root else None,
@@ -114,6 +123,7 @@ def evaluate_benchmark_readiness(
         command_probes=probes,
         dataset_probes=datasets,
         image_probes=images,
+        harness_probes=harness,
         official_commands=list(OFFICIAL_COMMANDS),
         blockers=blockers,
         warnings=warnings,
@@ -142,65 +152,6 @@ def read_upstream_commit(upstream_root: Path | None) -> str | None:
     if completed.returncode != 0:
         return None
     return completed.stdout.strip() or None
-
-
-def collect_blockers(
-    *,
-    upstream_root: Path | None,
-    missing_files: list[str],
-    tools: ToolAvailability,
-    env_config: EnvConfigCheck,
-    serving_ready: bool,
-    command_probes: list[CommandProbe],
-    dataset_probes: list[DatasetProbe],
-    image_probes: list[ImageManifestProbe],
-) -> list[str]:
-    blockers: list[str] = []
-    if upstream_root is None:
-        blockers.append("official FastContext upstream checkout was not provided")
-    elif missing_files:
-        blockers.append("official upstream checkout is missing required benchmark files or built wheel")
-    if not tools.uv:
-        blockers.append("uv is not available on PATH")
-    if not tools.docker:
-        blockers.append("Docker is not available on PATH")
-    elif not tools.docker_daemon:
-        blockers.append("Docker daemon is not reachable")
-    if env_config.config_path is None:
-        blockers.append("official benchmark .env config was not provided")
-    if env_config.missing_keys:
-        blockers.append("official benchmark .env is missing required FastContext/main model keys")
-    if env_config.placeholder_keys:
-        blockers.append("official benchmark .env still contains placeholder credential values")
-    if not env_config.has_main_credential:
-        blockers.append("official benchmark .env has no usable main-agent credential")
-    if not serving_ready:
-        blockers.append("official serving preflight is not ready")
-    if command_probes and not probes_passed(command_probes):
-        blockers.append("official benchmark CLI smoke probes failed")
-    if dataset_probes and not dataset_probes_passed(dataset_probes):
-        blockers.append("official benchmark dataset probes failed")
-    if image_probes and not image_probes_passed(image_probes):
-        blockers.append("official benchmark Docker image manifest probes failed")
-    return blockers
-
-
-def collect_warnings(
-    upstream_root: Path | None,
-    command_probes: list[CommandProbe],
-    dataset_probes: list[DatasetProbe],
-    image_probes: list[ImageManifestProbe],
-) -> list[str]:
-    if upstream_root is None:
-        return ["Run against a clone of https://github.com/microsoft/fastcontext after uv build."]
-    warnings: list[str] = []
-    if not command_probes:
-        warnings.append("Official benchmark CLI smoke probes were not run.")
-    if not dataset_probes:
-        warnings.append("Official benchmark dataset probes were not run.")
-    if not image_probes:
-        warnings.append("Official benchmark Docker image manifest probes were not run.")
-    return warnings
 
 
 def load_json_object(path: Path | None) -> Mapping[str, JsonValue] | None:
@@ -241,6 +192,11 @@ def main() -> int:
         action="store_true",
         help="Check Docker manifest availability for probed official sample images without pulling them.",
     )
+    _ = parser.add_argument(
+        "--probe-harness",
+        action="store_true",
+        help="Run a zero-instance official harness dry run that loads config, prompt, and dataset plumbing.",
+    )
     args: argparse.Namespace = parser.parse_args()
     upstream_root = cast(Path | None, args.upstream_root)
     config_path = cast(Path | None, args.config)
@@ -249,6 +205,7 @@ def main() -> int:
     probe_commands = cast(bool, args.probe_commands)
     probe_datasets = cast(bool, args.probe_datasets)
     probe_images = cast(bool, args.probe_images)
+    probe_harness = cast(bool, args.probe_harness)
     dataset_probes = (
         collect_official_dataset_probes(upstream_root) if probe_datasets or probe_images else None
     )
@@ -261,6 +218,7 @@ def main() -> int:
         command_probes=collect_official_command_probes(upstream_root) if probe_commands else None,
         dataset_probes=dataset_probes,
         image_probes=collect_official_image_probes(dataset_probes or []) if probe_images else None,
+        harness_probes=collect_official_harness_probes(upstream_root) if probe_harness else None,
     )
     text = json.dumps(asdict(result), ensure_ascii=False, indent=2) + "\n"
     _ = output.write_text(text, encoding="utf-8")

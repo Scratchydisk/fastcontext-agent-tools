@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT))
 
 from evaluation.endpoint_readiness import JsonValue  # noqa: E402
 from evaluation.official_benchmark_datasets import DatasetProbe  # noqa: E402
+from evaluation.official_benchmark_harness import HarnessProbe  # noqa: E402
 from evaluation.official_benchmark_images import ImageManifestProbe  # noqa: E402
 from evaluation.official_benchmark_probes import CommandProbe  # noqa: E402
 from evaluation.official_benchmark_readiness import (  # noqa: E402
@@ -176,6 +177,30 @@ class OfficialBenchmarkReadinessTests(unittest.TestCase):
 
         self.assertIn("official benchmark Docker image manifest probes failed", result.blockers)
         self.assertEqual(result.image_probes, [probe])
+
+    def test_failed_harness_probe_reports_blocker(self) -> None:
+        serving: dict[str, JsonValue] = {"ready": True}
+        probe = HarnessProbe(
+            name="mini_swe_agent_zero_instance",
+            command="uv run --group benchmark python benchmark/evaluation/bench_mini_swe_agent.py ...",
+            cwd="/tmp/upstream",
+            returncode=1,
+            duration_seconds=0.1,
+            dry_run_instances=0,
+            stdout_excerpt="",
+            stderr_excerpt="dataset load failed",
+        )
+
+        result = evaluate_benchmark_readiness(
+            upstream_root=None,
+            config_path=None,
+            serving_preflight=serving,
+            tools=ToolAvailability(uv=True, docker=True, docker_daemon=True),
+            harness_probes=[probe],
+        )
+
+        self.assertIn("official benchmark zero-instance harness probes failed", result.blockers)
+        self.assertEqual(result.harness_probes, [probe])
 
 
 if __name__ == "__main__":

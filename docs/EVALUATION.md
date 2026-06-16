@@ -194,6 +194,9 @@ The current result is not ready:
 - Official Docker image manifest probes: first Verified and Multilingual sample
   images are reachable; first Pro sample image returns Docker registry
   unauthorized/denied
+- Official harness dry run: `bench_mini_swe_agent.py --run-head 0` loads the
+  bundled prompt config and all 300 Multilingual test instances, then exits
+  before model calls or Docker execution
 
 This check is stricter than the local smoke tests. It records whether this
 machine can run Microsoft's benchmark commands, not whether this MCP wrapper's
@@ -235,7 +238,8 @@ uv run python -m evaluation.official_benchmark_readiness \
   --output evaluation/local-official-benchmark-readiness.json \
   --probe-commands \
   --probe-datasets \
-  --probe-images
+  --probe-images \
+  --probe-harness
 ```
 
 The benchmark requires a FastContext-compatible endpoint and `tiktoken`.
