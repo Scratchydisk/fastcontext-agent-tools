@@ -3,14 +3,48 @@ from __future__ import annotations
 from html import escape
 from typing import TypedDict
 
+from evaluation.endpoint_readiness import JsonValue
 
-class WrapperCheck(TypedDict):
+
+class WrapperCheckRequired(TypedDict):
     status: str
+
+
+class WrapperCheck(WrapperCheckRequired, total=False):
+    name: str
+    evidence: str
+    returncode: int
+    duration_seconds: float
+    stdout: str
+    stderr: str
+    data: JsonValue
+    response: JsonValue
+    citations: JsonValue
+    trace_files: JsonValue
+    transcript_path: str
+    trajectory_path: str
+    error: JsonValue
+
+
+class WrapperEnvironment(TypedDict):
+    python: str
+    platform: str
+
+
+class WrapperCounts(TypedDict):
+    checks_total: int
+    checks_passed: int
+    checks_failed: int
 
 
 class WrapperSummary(TypedDict):
     generated_at: str
+    project: str
+    scope: str
+    environment: WrapperEnvironment
+    summary: WrapperCounts
     checks: list[WrapperCheck]
+    limitations: list[str]
 
 
 def render_svg(summary: WrapperSummary) -> str:
@@ -76,7 +110,7 @@ def render_svg(summary: WrapperSummary) -> str:
   <text x="526" y="468" class="fine">FastContext raw: 81 tokens, cited nonexistent paths.</text>
   <text x="526" y="494" class="fine">MICE matrix: 3 query styles x 2 repeats, 0/6 ground-truth hits.</text>
   <text x="526" y="520" class="fine">Official preflight: not ready; endpoint, SGLang, CUDA blockers.</text>
-  <text x="526" y="536" class="fine">Benchmark gate: upstream built; credentials/serving blockers remain.</text>
+  <text x="526" y="536" class="fine">Benchmark gate: upstream built; CLI probes pass; credentials/serving blocked.</text>
   <text x="526" y="552" class="fine">Wrapper QA remains separate: {escape(wrapper_status)}.</text>
 
   <text x="48" y="594" class="note">Local smoke tests are small and task-specific. Official task-impact claims remain attributed to Microsoft.</text>

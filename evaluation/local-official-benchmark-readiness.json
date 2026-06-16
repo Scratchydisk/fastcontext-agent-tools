@@ -41,6 +41,35 @@
     "has_main_credential": false
   },
   "official_serving_ready": false,
+  "command_probes": [
+    {
+      "name": "mini_swe_agent_help",
+      "command": "uv run --group benchmark python benchmark/evaluation/bench_mini_swe_agent.py --help",
+      "cwd": "/Users/jakevinlo/project/mcp/factcontext-mcp/github-repo-https-github-com-jakevin/outputs/microsoft-fastcontext",
+      "returncode": 0,
+      "duration_seconds": 0.942,
+      "stdout_excerpt": "usage: bench_mini_swe_agent.py [-h] [--bench BENCH] [--experiment EXPERIMENT]\n                               [--config CONFIG] [--agent-config AGENT_CONFIG]\n                               [--baseline-agent-config BASELINE_AGENT_CONFIG]\n                               [--logs-dir LOGS_DIR] [--output OUTPUT]\n                               [--workers WORKERS] [--run-head RUN_HEAD]\n                               [--filter FILTER] [--redo-existing]\n                               [--no-fastcontext]\n\nBenchmark mini-swe-agent + fastcontext on SWE-bench\n\noptions:\n  -h, --help            show this help message and exit\n  --bench BENCH         Benchmark dataset name or path to JSONL file\n  --experiment EXPERIMENT\n                        Experiment name\n  --config CONFIG       Path to model config .env file (main agent +\n                        fastcontext)\n  --agent-config AGENT_CONFIG\n                        Path to mini-swe-agent YAML config. Defaults to a\n                        bundled prompts/*.yaml config\n  --baseline-agent-config BASELINE_AGENT_CONFIG\n                        Path to mini-swe-agent YAML config used with --no-\n                        fastcontext\n  --logs-dir LOGS_DIR...",
+      "stderr_excerpt": ""
+    },
+    {
+      "name": "swebench_fastcontext_help",
+      "command": "uv run --group benchmark python benchmark/swebench/bench_fastcontext.py --help",
+      "cwd": "/Users/jakevinlo/project/mcp/factcontext-mcp/github-repo-https-github-com-jakevin/outputs/microsoft-fastcontext",
+      "returncode": 0,
+      "duration_seconds": 0.644,
+      "stdout_excerpt": "usage: bench_fastcontext.py [-h] [--bench BENCH] [--experiment EXPERIMENT]\n                            [--num-threads NUM_THREADS] [--run-head RUN_HEAD]\n                            [--prediction-file PREDICTION_FILE]\n                            [--local-mount-dir LOCAL_MOUNT_DIR] [--iid IID]\n\noptions:\n  -h, --help            show this help message and exit\n  --bench BENCH\n  --experiment EXPERIMENT\n  --num-threads NUM_THREADS\n  --run-head RUN_HEAD\n  --prediction-file PREDICTION_FILE\n  --local-mount-dir LOCAL_MOUNT_DIR\n  --iid IID",
+      "stderr_excerpt": ""
+    },
+    {
+      "name": "run_score_import",
+      "command": "uv run --group benchmark python -c 'import sys; sys.path.insert(0, '\"'\"'benchmark/evaluation'\"'\"'); import run_score; print('\"'\"'run_score import ok'\"'\"')'",
+      "cwd": "/Users/jakevinlo/project/mcp/factcontext-mcp/github-repo-https-github-com-jakevin/outputs/microsoft-fastcontext",
+      "returncode": 0,
+      "duration_seconds": 0.644,
+      "stdout_excerpt": "run_score import ok",
+      "stderr_excerpt": ""
+    }
+  ],
   "official_commands": [
     "uv run --group benchmark python benchmark/evaluation/bench_mini_swe_agent.py --bench swebench-multilingual --agent-config prompts/gpt-multi-fc.yaml --config .env --output preds.json --logs-dir logs --workers 1",
     "cd benchmark/swebench && uv run --group benchmark python bench_fastcontext.py --bench swebench-multilingual --experiment fastcontext-eval --prediction-file predictions.jsonl --local-mount-dir /absolute/path/to/output --num-threads 1",

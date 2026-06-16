@@ -8,10 +8,10 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TypedDict, cast
 
 from .mcp_smoke import run_mcp_smoke
-from .render_summary import render_svg
+from .render_summary import WrapperCheck, WrapperSummary, render_svg
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,7 +19,15 @@ RESULT_PATH = ROOT / "evaluation" / "wrapper-eval.json"
 SVG_PATH = ROOT / "docs" / "assets" / "evaluation-summary.svg"
 
 
-def run_command(command: list[str], env: dict[str, str] | None = None) -> dict[str, Any]:
+class CommandResult(TypedDict):
+    status: str
+    returncode: int
+    duration_seconds: float
+    stdout: str
+    stderr: str
+
+
+def run_command(command: list[str], env: dict[str, str] | None = None) -> CommandResult:
     started = time.perf_counter()
     completed = subprocess.run(
         command,
@@ -43,9 +51,9 @@ def main() -> int:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT / "src")
     unit = run_command([sys.executable, "-m", "unittest", "discover", "-s", "tests"], env=env)
-    mcp_checks = run_mcp_smoke()
+    mcp_checks = cast(list[WrapperCheck], run_mcp_smoke())
 
-    checks = [
+    checks: list[WrapperCheck] = [
         {
             "name": "unit_tests",
             "evidence": "Runs the repository unit-test suite for parser, runtime, server, and wrapper behavior.",
@@ -54,7 +62,7 @@ def main() -> int:
         *mcp_checks,
     ]
     passed = sum(1 for check in checks if check["status"] == "pass")
-    summary = {
+    summary: WrapperSummary = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "project": "fastcontext-agent-tools",
         "scope": "MCP wrapper and bundled Codex skill",
@@ -75,9 +83,9 @@ def main() -> int:
         ],
     }
 
-    RESULT_PATH.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
-    SVG_PATH.write_text(render_svg(summary), encoding="utf-8")
-    print(json.dumps(summary["summary"], indent=2))
+    _ = RESULT_PATH.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    _ = SVG_PATH.write_text(render_svg(summary), encoding="utf-8")
+    _ = print(json.dumps(summary["summary"], indent=2))
     return 0 if passed == len(checks) else 1
 
 

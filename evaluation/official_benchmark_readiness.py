@@ -10,6 +10,12 @@ from pathlib import Path
 from typing import Final, cast
 
 from evaluation.endpoint_readiness import JsonValue
+from evaluation.official_benchmark_env import EnvConfigCheck, check_env_config
+from evaluation.official_benchmark_probes import (
+    CommandProbe,
+    collect_official_command_probes,
+    probes_passed,
+)
 from evaluation.official_serving_preflight import read_bool
 
 REQUIRED_UPSTREAM_FILES: Final = [
@@ -23,13 +29,6 @@ REQUIRED_UPSTREAM_FILES: Final = [
     "third_party/mini-swe-agent",
     "dist/fastcontext-0.1.0-py3-none-any.whl",
 ]
-REQUIRED_ENV_KEYS: Final = [
-    "MAIN_MODEL",
-    "FASTCONTEXT_MODEL",
-    "FASTCONTEXT_API_KEY",
-    "FASTCONTEXT_BASE_URL",
-]
-MAIN_CREDENTIAL_KEYS: Final = ["AZURE_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"]
 OFFICIAL_COMMANDS: Final = [
     (
         "uv run --group benchmark python benchmark/evaluation/bench_mini_swe_agent.py "
@@ -57,16 +56,6 @@ class ToolAvailability:
 
 
 @dataclass(frozen=True, slots=True)
-class EnvConfigCheck:
-    config_path: str | None
-    required_keys: list[str]
-    main_credential_options: list[str]
-    missing_keys: list[str]
-    placeholder_keys: list[str]
-    has_main_credential: bool
-
-
-@dataclass(frozen=True, slots=True)
 class OfficialBenchmarkReadiness:
     ready: bool
     upstream_root: str | None
@@ -76,6 +65,7 @@ class OfficialBenchmarkReadiness:
     tools: ToolAvailability
     env_config: EnvConfigCheck
     official_serving_ready: bool
+    command_probes: list[CommandProbe]
     official_commands: list[str]
     blockers: list[str]
     warnings: list[str]
@@ -86,18 +76,21 @@ def evaluate_benchmark_readiness(
     config_path: Path | None,
     serving_preflight: Mapping[str, JsonValue] | None,
     tools: ToolAvailability,
+    command_probes: list[CommandProbe] | None = None,
 ) -> OfficialBenchmarkReadiness:
     missing_files = missing_required_files(upstream_root)
     env_config = check_env_config(config_path)
     serving_ready = read_bool(dict(serving_preflight) if serving_preflight else None, "ready")
+    probes = list(command_probes or [])
     blockers = collect_blockers(
         upstream_root=upstream_root,
         missing_files=missing_files,
         tools=tools,
         env_config=env_config,
         serving_ready=serving_ready,
+        command_probes=probes,
     )
-    warnings = collect_warnings(upstream_root)
+    warnings = collect_warnings(upstream_root, probes)
     return OfficialBenchmarkReadiness(
         ready=not blockers,
         upstream_root=str(upstream_root.resolve()) if upstream_root else None,
@@ -107,6 +100,7 @@ def evaluate_benchmark_readiness(
         tools=tools,
         env_config=env_config,
         official_serving_ready=serving_ready,
+        command_probes=probes,
         official_commands=list(OFFICIAL_COMMANDS),
         blockers=blockers,
         warnings=warnings,
@@ -137,43 +131,6 @@ def read_upstream_commit(upstream_root: Path | None) -> str | None:
     return completed.stdout.strip() or None
 
 
-def check_env_config(config_path: Path | None) -> EnvConfigCheck:
-    values = read_env_file(config_path)
-    missing = [key for key in REQUIRED_ENV_KEYS if not values.get(key)]
-    placeholder = [
-        key
-        for key, value in values.items()
-        if is_placeholder(value) and key in [*REQUIRED_ENV_KEYS, *MAIN_CREDENTIAL_KEYS]
-    ]
-    has_main_credential = any(values.get(key) and not is_placeholder(values[key]) for key in MAIN_CREDENTIAL_KEYS)
-    return EnvConfigCheck(
-        config_path=str(config_path.resolve()) if config_path else None,
-        required_keys=list(REQUIRED_ENV_KEYS),
-        main_credential_options=list(MAIN_CREDENTIAL_KEYS),
-        missing_keys=missing,
-        placeholder_keys=sorted(placeholder),
-        has_main_credential=has_main_credential,
-    )
-
-
-def read_env_file(config_path: Path | None) -> dict[str, str]:
-    if config_path is None or not config_path.exists():
-        return {}
-    values: dict[str, str] = {}
-    for raw_line in config_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        values[key.strip()] = value.strip().strip("\"'")
-    return values
-
-
-def is_placeholder(value: str) -> bool:
-    normalized = value.strip().lower()
-    return not normalized or normalized.startswith("your-") or "your-" in normalized
-
-
 def collect_blockers(
     *,
     upstream_root: Path | None,
@@ -181,6 +138,7 @@ def collect_blockers(
     tools: ToolAvailability,
     env_config: EnvConfigCheck,
     serving_ready: bool,
+    command_probes: list[CommandProbe],
 ) -> list[str]:
     blockers: list[str] = []
     if upstream_root is None:
@@ -203,12 +161,16 @@ def collect_blockers(
         blockers.append("official benchmark .env has no usable main-agent credential")
     if not serving_ready:
         blockers.append("official serving preflight is not ready")
+    if command_probes and not probes_passed(command_probes):
+        blockers.append("official benchmark CLI smoke probes failed")
     return blockers
 
 
-def collect_warnings(upstream_root: Path | None) -> list[str]:
+def collect_warnings(upstream_root: Path | None, command_probes: list[CommandProbe]) -> list[str]:
     if upstream_root is None:
         return ["Run against a clone of https://github.com/microsoft/fastcontext after uv build."]
+    if not command_probes:
+        return ["Official benchmark CLI smoke probes were not run."]
     return []
 
 
@@ -258,17 +220,24 @@ def main() -> int:
         type=Path,
         default=Path("evaluation/local-official-benchmark-readiness.json"),
     )
+    _ = parser.add_argument(
+        "--probe-commands",
+        action="store_true",
+        help="Run safe official benchmark CLI smoke probes and record their output excerpts.",
+    )
     args: argparse.Namespace = parser.parse_args()
     upstream_root = cast(Path | None, args.upstream_root)
     config_path = cast(Path | None, args.config)
     serving_preflight = cast(Path | None, args.serving_preflight)
     output = cast(Path, args.output)
+    probe_commands = cast(bool, args.probe_commands)
 
     result = evaluate_benchmark_readiness(
         upstream_root=upstream_root,
         config_path=config_path,
         serving_preflight=load_json_object(serving_preflight),
         tools=collect_tools(),
+        command_probes=collect_official_command_probes(upstream_root) if probe_commands else None,
     )
     text = json.dumps(asdict(result), ensure_ascii=False, indent=2) + "\n"
     _ = output.write_text(text, encoding="utf-8")

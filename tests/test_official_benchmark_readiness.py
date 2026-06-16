@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from evaluation.endpoint_readiness import JsonValue  # noqa: E402
+from evaluation.official_benchmark_probes import CommandProbe  # noqa: E402
 from evaluation.official_benchmark_readiness import (  # noqa: E402
     ToolAvailability,
     evaluate_benchmark_readiness,
@@ -94,6 +95,29 @@ class OfficialBenchmarkReadinessTests(unittest.TestCase):
         )
 
         self.assertIn("Docker daemon is not reachable", result.blockers)
+
+    def test_failed_command_probe_reports_blocker(self) -> None:
+        serving: dict[str, JsonValue] = {"ready": True}
+        probe = CommandProbe(
+            name="mini_swe_agent_help",
+            command="uv run --group benchmark python benchmark/evaluation/bench_mini_swe_agent.py --help",
+            cwd="/tmp/upstream",
+            returncode=1,
+            duration_seconds=0.1,
+            stdout_excerpt="",
+            stderr_excerpt="import failed",
+        )
+
+        result = evaluate_benchmark_readiness(
+            upstream_root=None,
+            config_path=None,
+            serving_preflight=serving,
+            tools=ToolAvailability(uv=True, docker=True, docker_daemon=True),
+            command_probes=[probe],
+        )
+
+        self.assertIn("official benchmark CLI smoke probes failed", result.blockers)
+        self.assertEqual(result.command_probes, [probe])
 
 
 if __name__ == "__main__":
