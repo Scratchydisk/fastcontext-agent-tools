@@ -164,6 +164,31 @@ This preflight does not claim that FastContext cannot run elsewhere. It records
 that this local project environment is not the official-style serving setup used
 for Microsoft's published benchmark claims.
 
+## Official Benchmark Readiness
+
+`evaluation/local-official-benchmark-readiness.json` captures whether the local
+workspace is ready to run the official Microsoft benchmark surfaces documented
+upstream:
+
+- End-to-end Mini-SWE-Agent SWE-bench runner:
+  `benchmark/evaluation/bench_mini_swe_agent.py`
+- Standalone FastContext exploration runner:
+  `benchmark/swebench/bench_fastcontext.py`
+- Citation scorer:
+  `benchmark/evaluation/run_score.py`
+
+The current result is not ready:
+
+- Official upstream checkout: not provided
+- Official benchmark `.env`: not provided
+- Main-agent credential: not provided
+- Official serving preflight: `false`
+- Local tools available: `uv=true`, `docker=true`
+
+This check is stricter than the local smoke tests. It records whether this
+machine can run Microsoft's benchmark commands, not whether this MCP wrapper's
+own tests pass.
+
 ### Re-Running
 
 The repeatable harness is:
@@ -188,6 +213,16 @@ For the official-serving preflight artifact:
 
 ```bash
 uv run python -m evaluation.official_serving_preflight --endpoint-readiness evaluation/local-endpoint-readiness.json --output evaluation/local-official-serving-preflight.json
+```
+
+For the official benchmark readiness artifact:
+
+```bash
+uv run python -m evaluation.official_benchmark_readiness \
+  --upstream-root /absolute/path/to/microsoft/fastcontext \
+  --config /absolute/path/to/microsoft/fastcontext/.env \
+  --serving-preflight evaluation/local-official-serving-preflight.json \
+  --output evaluation/local-official-benchmark-readiness.json
 ```
 
 The benchmark requires a FastContext-compatible endpoint and `tiktoken`.

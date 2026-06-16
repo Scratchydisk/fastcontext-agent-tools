@@ -1,0 +1,68 @@
+{
+  "ready": false,
+  "upstream_root": null,
+  "required_upstream_files": [
+    "benchmark/evaluation/bench_mini_swe_agent.py",
+    "benchmark/evaluation/configs/example.env",
+    "benchmark/evaluation/run_score.py",
+    "benchmark/swebench/bench_fastcontext.py",
+    "benchmark/swebench/run.sh.sample",
+    "prompts/gpt-multi-fc.yaml",
+    "prompts/gpt-pro-fc.yaml",
+    "third_party/mini-swe-agent",
+    "dist/fastcontext-0.1.0-py3-none-any.whl"
+  ],
+  "missing_upstream_files": [
+    "benchmark/evaluation/bench_mini_swe_agent.py",
+    "benchmark/evaluation/configs/example.env",
+    "benchmark/evaluation/run_score.py",
+    "benchmark/swebench/bench_fastcontext.py",
+    "benchmark/swebench/run.sh.sample",
+    "prompts/gpt-multi-fc.yaml",
+    "prompts/gpt-pro-fc.yaml",
+    "third_party/mini-swe-agent",
+    "dist/fastcontext-0.1.0-py3-none-any.whl"
+  ],
+  "tools": {
+    "uv": true,
+    "docker": true
+  },
+  "env_config": {
+    "config_path": null,
+    "required_keys": [
+      "MAIN_MODEL",
+      "FASTCONTEXT_MODEL",
+      "FASTCONTEXT_API_KEY",
+      "FASTCONTEXT_BASE_URL"
+    ],
+    "main_credential_options": [
+      "AZURE_API_KEY",
+      "OPENAI_API_KEY",
+      "ANTHROPIC_API_KEY"
+    ],
+    "missing_keys": [
+      "MAIN_MODEL",
+      "FASTCONTEXT_MODEL",
+      "FASTCONTEXT_API_KEY",
+      "FASTCONTEXT_BASE_URL"
+    ],
+    "placeholder_keys": [],
+    "has_main_credential": false
+  },
+  "official_serving_ready": false,
+  "official_commands": [
+    "uv run --group benchmark python benchmark/evaluation/bench_mini_swe_agent.py --bench swebench-multilingual --agent-config prompts/gpt-multi-fc.yaml --config .env --output preds.json --logs-dir logs --workers 1",
+    "cd benchmark/swebench && uv run --group benchmark python bench_fastcontext.py --bench swebench-multilingual --experiment fastcontext-eval --prediction-file predictions.jsonl --local-mount-dir /absolute/path/to/output --num-threads 1",
+    "uv run --group benchmark python benchmark/evaluation/run_score.py swebench-multilingual result_finial_response.jsonl"
+  ],
+  "blockers": [
+    "official FastContext upstream checkout was not provided",
+    "official benchmark .env config was not provided",
+    "official benchmark .env is missing required FastContext/main model keys",
+    "official benchmark .env has no usable main-agent credential",
+    "official serving preflight is not ready"
+  ],
+  "warnings": [
+    "Run against a clone of https://github.com/microsoft/fastcontext after uv build."
+  ]
+}
