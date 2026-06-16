@@ -10,11 +10,12 @@ sys.path.insert(0, str(ROOT))
 
 from evaluation.endpoint_readiness import JsonValue  # noqa: E402
 from evaluation.official_benchmark_datasets import DatasetProbe  # noqa: E402
+from evaluation.official_benchmark_images import ImageManifestProbe  # noqa: E402
 from evaluation.official_benchmark_probes import CommandProbe  # noqa: E402
 from evaluation.official_benchmark_readiness import (  # noqa: E402
-    ToolAvailability,
     evaluate_benchmark_readiness,
 )
+from evaluation.official_benchmark_tools import ToolAvailability  # noqa: E402
 
 
 class OfficialBenchmarkReadinessTests(unittest.TestCase):
@@ -146,6 +147,35 @@ class OfficialBenchmarkReadinessTests(unittest.TestCase):
 
         self.assertIn("official benchmark dataset probes failed", result.blockers)
         self.assertEqual(result.dataset_probes, [probe])
+
+    def test_failed_image_manifest_probe_reports_blocker(self) -> None:
+        serving: dict[str, JsonValue] = {"ready": True}
+        probe = ImageManifestProbe(
+            name="swebench-pro",
+            instance_id="instance_NodeBB__NodeBB-04998908ba6721d64eba79ae3b65a351dcfbc5b5-vnan",
+            image=(
+                "docker.io/swebench/"
+                "sweb.eval.x86_64.instance_nodebb_1776_nodebb-04998908ba6721d64eba79ae3b65a351dcfbc5b5-vnan:latest"
+            ),
+            command="docker manifest inspect ...",
+            returncode=1,
+            duration_seconds=0.1,
+            media_type=None,
+            manifest_found=False,
+            stdout_excerpt="",
+            stderr_excerpt="unauthorized",
+        )
+
+        result = evaluate_benchmark_readiness(
+            upstream_root=None,
+            config_path=None,
+            serving_preflight=serving,
+            tools=ToolAvailability(uv=True, docker=True, docker_daemon=True),
+            image_probes=[probe],
+        )
+
+        self.assertIn("official benchmark Docker image manifest probes failed", result.blockers)
+        self.assertEqual(result.image_probes, [probe])
 
 
 if __name__ == "__main__":

@@ -191,8 +191,9 @@ Local before/after FastContext impact data:
   project env lacks SGLang and no CUDA/NVIDIA runtime is available.
 - Official benchmark readiness: upstream `microsoft/fastcontext` checkout,
   wheel build, safe benchmark CLI probes, and one-sample official dataset
-  probes are present, but benchmark credentials and official serving readiness
-  are still missing.
+  probes are present. Verified and Multilingual sample Docker manifests are
+  reachable, but the Pro sample manifest requires Docker registry auth; benchmark
+  credentials and official serving readiness are still missing.
 - These local smoke tests do not match Microsoft's benchmark harness and do not
   reproduce the official gains yet.
 

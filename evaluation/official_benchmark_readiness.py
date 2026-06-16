@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import subprocess
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
@@ -16,12 +15,18 @@ from evaluation.official_benchmark_datasets import (
     dataset_probes_passed,
 )
 from evaluation.official_benchmark_env import EnvConfigCheck, check_env_config
+from evaluation.official_benchmark_images import (
+    ImageManifestProbe,
+    collect_official_image_probes,
+    image_probes_passed,
+)
 from evaluation.official_benchmark_probes import (
     CommandProbe,
     collect_official_command_probes,
     probes_passed,
 )
 from evaluation.official_serving_preflight import read_bool
+from evaluation.official_benchmark_tools import ToolAvailability, collect_tools
 
 REQUIRED_UPSTREAM_FILES: Final = [
     "benchmark/evaluation/bench_mini_swe_agent.py",
@@ -54,13 +59,6 @@ OFFICIAL_COMMANDS: Final = [
 
 
 @dataclass(frozen=True, slots=True)
-class ToolAvailability:
-    uv: bool
-    docker: bool
-    docker_daemon: bool
-
-
-@dataclass(frozen=True, slots=True)
 class OfficialBenchmarkReadiness:
     ready: bool
     upstream_root: str | None
@@ -72,6 +70,7 @@ class OfficialBenchmarkReadiness:
     official_serving_ready: bool
     command_probes: list[CommandProbe]
     dataset_probes: list[DatasetProbe]
+    image_probes: list[ImageManifestProbe]
     official_commands: list[str]
     blockers: list[str]
     warnings: list[str]
@@ -84,12 +83,14 @@ def evaluate_benchmark_readiness(
     tools: ToolAvailability,
     command_probes: list[CommandProbe] | None = None,
     dataset_probes: list[DatasetProbe] | None = None,
+    image_probes: list[ImageManifestProbe] | None = None,
 ) -> OfficialBenchmarkReadiness:
     missing_files = missing_required_files(upstream_root)
     env_config = check_env_config(config_path)
     serving_ready = read_bool(dict(serving_preflight) if serving_preflight else None, "ready")
     probes = list(command_probes or [])
     datasets = list(dataset_probes or [])
+    images = list(image_probes or [])
     blockers = collect_blockers(
         upstream_root=upstream_root,
         missing_files=missing_files,
@@ -98,8 +99,9 @@ def evaluate_benchmark_readiness(
         serving_ready=serving_ready,
         command_probes=probes,
         dataset_probes=datasets,
+        image_probes=images,
     )
-    warnings = collect_warnings(upstream_root, probes, datasets)
+    warnings = collect_warnings(upstream_root, probes, datasets, images)
     return OfficialBenchmarkReadiness(
         ready=not blockers,
         upstream_root=str(upstream_root.resolve()) if upstream_root else None,
@@ -111,6 +113,7 @@ def evaluate_benchmark_readiness(
         official_serving_ready=serving_ready,
         command_probes=probes,
         dataset_probes=datasets,
+        image_probes=images,
         official_commands=list(OFFICIAL_COMMANDS),
         blockers=blockers,
         warnings=warnings,
@@ -150,6 +153,7 @@ def collect_blockers(
     serving_ready: bool,
     command_probes: list[CommandProbe],
     dataset_probes: list[DatasetProbe],
+    image_probes: list[ImageManifestProbe],
 ) -> list[str]:
     blockers: list[str] = []
     if upstream_root is None:
@@ -176,6 +180,8 @@ def collect_blockers(
         blockers.append("official benchmark CLI smoke probes failed")
     if dataset_probes and not dataset_probes_passed(dataset_probes):
         blockers.append("official benchmark dataset probes failed")
+    if image_probes and not image_probes_passed(image_probes):
+        blockers.append("official benchmark Docker image manifest probes failed")
     return blockers
 
 
@@ -183,6 +189,7 @@ def collect_warnings(
     upstream_root: Path | None,
     command_probes: list[CommandProbe],
     dataset_probes: list[DatasetProbe],
+    image_probes: list[ImageManifestProbe],
 ) -> list[str]:
     if upstream_root is None:
         return ["Run against a clone of https://github.com/microsoft/fastcontext after uv build."]
@@ -191,30 +198,9 @@ def collect_warnings(
         warnings.append("Official benchmark CLI smoke probes were not run.")
     if not dataset_probes:
         warnings.append("Official benchmark dataset probes were not run.")
+    if not image_probes:
+        warnings.append("Official benchmark Docker image manifest probes were not run.")
     return warnings
-
-
-def collect_tools() -> ToolAvailability:
-    has_docker = shutil.which("docker") is not None
-    return ToolAvailability(
-        uv=shutil.which("uv") is not None,
-        docker=has_docker,
-        docker_daemon=has_docker and docker_daemon_available(),
-    )
-
-
-def docker_daemon_available() -> bool:
-    try:
-        completed = subprocess.run(
-            ["docker", "info"],
-            check=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=15,
-        )
-    except subprocess.TimeoutExpired:
-        return False
-    return completed.returncode == 0
 
 
 def load_json_object(path: Path | None) -> Mapping[str, JsonValue] | None:
@@ -250,6 +236,11 @@ def main() -> int:
         action="store_true",
         help="Load one sample from each official benchmark dataset and record access evidence.",
     )
+    _ = parser.add_argument(
+        "--probe-images",
+        action="store_true",
+        help="Check Docker manifest availability for probed official sample images without pulling them.",
+    )
     args: argparse.Namespace = parser.parse_args()
     upstream_root = cast(Path | None, args.upstream_root)
     config_path = cast(Path | None, args.config)
@@ -257,6 +248,10 @@ def main() -> int:
     output = cast(Path, args.output)
     probe_commands = cast(bool, args.probe_commands)
     probe_datasets = cast(bool, args.probe_datasets)
+    probe_images = cast(bool, args.probe_images)
+    dataset_probes = (
+        collect_official_dataset_probes(upstream_root) if probe_datasets or probe_images else None
+    )
 
     result = evaluate_benchmark_readiness(
         upstream_root=upstream_root,
@@ -264,7 +259,8 @@ def main() -> int:
         serving_preflight=load_json_object(serving_preflight),
         tools=collect_tools(),
         command_probes=collect_official_command_probes(upstream_root) if probe_commands else None,
-        dataset_probes=collect_official_dataset_probes(upstream_root) if probe_datasets else None,
+        dataset_probes=dataset_probes,
+        image_probes=collect_official_image_probes(dataset_probes or []) if probe_images else None,
     )
     text = json.dumps(asdict(result), ensure_ascii=False, indent=2) + "\n"
     _ = output.write_text(text, encoding="utf-8")

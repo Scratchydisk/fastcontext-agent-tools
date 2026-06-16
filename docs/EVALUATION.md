@@ -191,6 +191,9 @@ The current result is not ready:
 - Official benchmark dataset probes: one `test[:1]` sample loads from
   `princeton-nlp/SWE-Bench_Verified`, `SWE-bench/SWE-bench_Multilingual`, and
   `ScaleAI/SWE-bench_Pro`
+- Official Docker image manifest probes: first Verified and Multilingual sample
+  images are reachable; first Pro sample image returns Docker registry
+  unauthorized/denied
 
 This check is stricter than the local smoke tests. It records whether this
 machine can run Microsoft's benchmark commands, not whether this MCP wrapper's
@@ -231,7 +234,8 @@ uv run python -m evaluation.official_benchmark_readiness \
   --serving-preflight evaluation/local-official-serving-preflight.json \
   --output evaluation/local-official-benchmark-readiness.json \
   --probe-commands \
-  --probe-datasets
+  --probe-datasets \
+  --probe-images
 ```
 
 The benchmark requires a FastContext-compatible endpoint and `tiktoken`.
