@@ -156,20 +156,30 @@ still read the cited files before changing code.
 
 ![Evaluation summary](docs/assets/evaluation-summary.svg)
 
-The graphic separates official benchmark data from this repository's local
-measurements.
+The graphic separates official benchmark data from this repository's local QA
+checks. The local checks are not a FastContext before/after benchmark.
 
 Official Microsoft FastContext data:
 
 - Up to 5.5 Mini-SWE-Agent score improvement.
 - Up to 60.3% fewer main-agent tokens.
 
-Our measured wrapper data:
+Local integration QA:
 
 - 7 local wrapper checks passed.
 - Unit tests cover parser, runtime, server, and wrapper behavior.
 - MCP stdio checks verify initialize, tool discovery, health response,
   citation parsing, trace output, and path allowlist rejection.
+
+Local before/after FastContext impact data:
+
+- One local MICE check-in task has been run as a smoke benchmark.
+- Direct exploration used 6,979 main-agent context tokens and found the
+  ground-truth endpoint.
+- FastContext returned only 85 tokens, but missed the ground-truth endpoint.
+- After reading FastContext's cited files and falling back to direct
+  exploration to answer correctly, total main-agent context was 8,230 tokens
+  (+17.9% versus direct).
 
 Wrapper evaluation is repeatable:
 
@@ -187,6 +197,7 @@ Artifacts:
 
 - Evaluation notes: [docs/EVALUATION.md](docs/EVALUATION.md)
 - Result JSON: [evaluation/wrapper-eval.json](evaluation/wrapper-eval.json)
+- MICE before/after token smoke test: [evaluation/mice-checkin-before-after.json](evaluation/mice-checkin-before-after.json)
 - Full report: [docs/REPORT.md](docs/REPORT.md)
 
 The local evaluation uses a fake `fastcontext.cli` package so it can validate

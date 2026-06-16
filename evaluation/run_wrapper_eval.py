@@ -70,6 +70,7 @@ def main() -> int:
         "checks": checks,
         "limitations": [
             "This evaluation uses a fake fastcontext.cli package to verify wrapper behavior without a GPU or model endpoint.",
+            "Local checks are integration QA, not a FastContext before/after impact measurement.",
             "FastContext model-quality claims are not reproduced here; see the Microsoft FastContext paper and model card.",
         ],
     }

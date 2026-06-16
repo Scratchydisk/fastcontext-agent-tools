@@ -7,7 +7,7 @@ FastContext Agent Tools packages Microsoft FastContext for practical agent use:
 - A Python MCP stdio server with Microsoft FastContext pinned as a runtime dependency.
 - A Codex skill that teaches an agent when to delegate repository exploration.
 - English-first documentation plus Chinese and Japanese MCP setup guides.
-- A repeatable wrapper evaluation with committed JSON and SVG evidence.
+- Repeatable wrapper QA with committed JSON and SVG evidence.
 
 The project is intentionally narrow. It does not reimplement FastContext, download model weights, or modify repositories. It installs the official FastContext package and runs `fastcontext.cli` with the MCP server's Python interpreter, returning file-line citations for the main coding agent to verify.
 
@@ -55,13 +55,13 @@ The repository includes:
 - Japanese MCP guide: `docs/mcp.ja.md`.
 - Evaluation notes: `docs/EVALUATION.md`.
 - This report: `docs/REPORT.md`.
-- GitHub Actions CI for unit tests and wrapper evaluation.
+- GitHub Actions CI for unit tests and wrapper QA.
 
 ## Evaluation
 
 ![Evaluation summary](assets/evaluation-summary.svg)
 
-Local wrapper evaluation was run on 2026-06-16 and committed as `evaluation/wrapper-eval.json`.
+Local wrapper QA was run on 2026-06-16 and committed as `evaluation/wrapper-eval.json`.
 
 Results:
 
@@ -69,9 +69,13 @@ Results:
 - 7 passed.
 - 0 failed.
 
-The evaluation starts the MCP server over stdio, sends JSON-RPC framed requests, and records separate measured checks for initialization, tool discovery, health behavior, citation parsing, trace output, and path allowlist rejection. The exploration calls use a fake `fastcontext.cli` package, so the result proves wrapper behavior without requiring a GPU or model endpoint.
+The local QA starts the MCP server over stdio, sends JSON-RPC framed requests, and records separate checks for initialization, tool discovery, health behavior, citation parsing, trace output, and path allowlist rejection. The exploration calls use a fake `fastcontext.cli` package, so the result proves wrapper behavior without requiring a GPU or model endpoint.
 
-This is not a FastContext model benchmark. Model-quality claims are sourced from Microsoft FastContext because this environment does not provide a GPU endpoint or the full SWE-bench benchmark setup.
+This wrapper QA is not a FastContext before/after benchmark.
+
+A separate local MICE check-in token smoke test is committed in `evaluation/mice-checkin-before-after.json`. For that single task, direct exploration used 6,979 estimated main-agent context tokens and found `app/routers/logs.js`. FastContext returned only 85 tokens, but missed the ground-truth endpoint; after reading its cited files and falling back to direct exploration, the correct workflow used 8,230 tokens, or 17.9% more than direct exploration.
+
+Model-quality and broader task-impact claims remain sourced from Microsoft FastContext because this repository has not re-run the full benchmark setup.
 
 ## Installation Contract
 
