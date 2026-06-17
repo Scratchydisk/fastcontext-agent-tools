@@ -1,6 +1,6 @@
 ---
 name: fastcontext-explorer
-description: Use Microsoft FastContext as a read-only repository exploration subagent for coding tasks. Trigger when Codex needs to locate relevant files, symbols, call paths, tests, or line ranges before editing or answering in an unfamiliar or medium-to-large codebase; when broad grep/read exploration would consume significant context; or when a task asks where behavior is implemented. Do not use for tiny single-file tasks, already-known target files, or non-code questions.
+description: Use Microsoft FastContext as the default read-only code exploration subagent before answering, editing, reviewing, or debugging code you are not already certain about. Trigger when a task requires reading more than one file, tracing logic across modules, locating files/symbols/call paths/tests, mapping dependencies, assessing change impact, or finding where behavior is implemented. Use it instead of manual grep/glob/read chains when broad exploration would consume main-agent context. Do not use for already-read exact files, a single obvious grep in one known file, pure generation tasks with no exploration need, tiny single-file tasks, or non-code questions.
 ---
 
 # FastContext Explorer
@@ -12,6 +12,23 @@ description: Use Microsoft FastContext as a read-only repository exploration sub
 3. Treat returned citations as candidate evidence, not proof. Read the cited files and line ranges yourself before editing or answering.
 4. If citations are sparse, off-target, or missing, refine the query once with concrete terms from the task, error, subsystem, or nearby filenames.
 5. For debugging poor searches, use `fastcontext_explore_with_trace` and inspect the saved trajectory.
+
+## When to Use
+
+- Understand unfamiliar code before editing, reviewing, debugging, or explaining it.
+- Trace logic across layers, such as request to handler to service to storage.
+- Answer code questions like "How does X work?", "Where is Y defined?", or "What calls Z?".
+- Map what a symbol depends on or what depends on it.
+- Assess which files are likely affected by a change.
+
+When unsure and the answer needs more than one file, run FastContext first.
+
+## When Not to Use
+
+- You already read the exact file and surrounding context in this session.
+- One known file and one obvious search will answer the question.
+- The task is pure writing or generation with no repository exploration.
+- The task is non-code.
 
 ## Query Shape
 
