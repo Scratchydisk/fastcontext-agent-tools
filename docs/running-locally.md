@@ -28,7 +28,8 @@ running the MCP, and `FASTCONTEXT_ALLOWED_ROOTS` is always local.
 | File | Purpose |
 |---|---|
 | `scripts/env.sh` | Committable defaults for the 4 env vars the MCP reads; sources `env.local.sh` last. |
-| `scripts/env.local.sh` | **Gitignored.** Per-machine values: `FASTCONTEXT_ALLOWED_ROOTS`, `HF_TOKEN`, remote endpoint. |
+| `scripts/env.local.sh` | **Gitignored.** Per-machine values: `FASTCONTEXT_ALLOWED_ROOTS`, `HF_TOKEN`, remote endpoint, small-GPU flags. Copy from `env.local.sh.example`. |
+| `scripts/env.local.sh.example` | Committed template for the above, incl. the verified small-GPU recipe (commented out). |
 | `scripts/kickoff.sh` | Install if needed → `--print-health` → optional live `explore` smoke test. |
 | `scripts/serve-model.sh` | Launch vLLM for the model. Run in its own terminal. |
 
@@ -39,8 +40,8 @@ All paths are derived from the script location, so the repo can live anywhere.
 ```bash
 ./scripts/kickoff.sh          # creates .venv (py3.12), installs, prints health
 ```
-Expect `"ok": true`, the bundled FastContext importing, and `python -m pytest`
-passing (13/13).
+Expect `"ok": true`, the bundled FastContext importing, and the test suite
+passing (`python -m unittest tests.test_server` → 19/19).
 
 ## Checkpoint B — live exploration (needs the model)
 
@@ -67,6 +68,39 @@ export HF_TOKEN=hf_...                 # or set it in scripts/env.local.sh
   pull can rate-limit/stall; set a token to make it reliable.
 - **Context length** defaults to 65536 (`CTX_LEN` env to override); the model
   supports up to 262144 and a 24 GB card has room.
+- **ripgrep is required.** The `GREP`/`GLOB` tools shell out to `rg`. If it's
+  not on `PATH`, searches fail with "No such file or directory: 'rg'", the agent
+  reads nothing, and `explore` returns no/garbage citations. Install it
+  (`apt install ripgrep`, or a static binary on `PATH`). When the MCP is spawned
+  by Claude Code, make sure its `env.PATH` includes wherever `rg` lives.
+
+## Small GPUs (≈8 GB) — quantised serving
+
+FastContext-4B is ~8 GB of BF16 weights, so it will **not** fit on an 8 GB card
+at full precision (it OOMs while loading weights). It can still run via 4-bit
+quantisation plus a few headroom/quality flags. All of them are opt-in env vars
+with safe defaults, so larger GPUs are unaffected — copy the template and
+uncomment the small-GPU block:
+
+```bash
+cp scripts/env.local.sh.example scripts/env.local.sh
+# then uncomment the "Small-GPU recipe" block
+```
+
+What the block sets, and why (verified on an RTX A2000 8 GB):
+
+| Var | Value | Why |
+|---|---|---|
+| `QUANT` | `bitsandbytes` | 4-bit weights (~2.5 GB); BF16 won't fit. |
+| `CTX_LEN` | `16384` | Small KV cache (only ~0.8 GB free at this size). |
+| `GPU_MEM_UTIL` | `0.85` | Leave room for the CUDA context. |
+| `ENFORCE_EAGER` | `1` | Skip CUDA-graph capture (else OOM after weights load). |
+| `VLLM_USE_FLASHINFER_SAMPLER` | `0` | flashinfer sampler may not JIT-compile; use native. |
+| `FASTCONTEXT_MAX_TOKENS` | `4000` | Cap the hardcoded 32000-token request so prompt+output stays under `CTX_LEN` with room to read files. |
+| `FASTCONTEXT_REROOT_PATHS` | `1` | Re-root paths the quantised model mangles back under the workspace. |
+
+These come at a quality/latency cost (4-bit degrades instruction-following,
+eager mode is slower). On a larger card, leave them unset for full fidelity.
 
 ## Registering with Claude Code (after Checkpoint B works)
 
@@ -89,6 +123,14 @@ Point the MCP client at the MCP venv's Python so it imports the right install
   }
 }
 ```
+
+**The MCP client does not source `env.local.sh`.** Only the shell scripts
+(`kickoff.sh`, `serve-model.sh`) read it. When Claude Code spawns the MCP
+server it passes only the `env` block above — so any var your setup relies on
+(`FASTCONTEXT_MAX_TOKENS`, `FASTCONTEXT_REROOT_PATHS`, a `PATH` that finds `rg`,
+`FASTCONTEXT_ALLOWED_ROOTS`) must be duplicated here too. Editing the block
+doesn't reach an already-running server; reconnect (restart Claude Code) after
+changes. `FASTCONTEXT_ALLOWED_ROOTS` may be `/` to allow exploring any path.
 
 For serving the model on a separate machine, see the **Hosting the model on a
 remote server** section in the [README](../README.md).
