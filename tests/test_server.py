@@ -133,6 +133,27 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(out.count(b"\n"), 1)
         self.assertEqual(json.loads(out.decode("utf-8"))["result"], {"ok": True})
 
+    def test_read_tool_blocks_paths_outside_working_dir(self) -> None:
+        import asyncio
+
+        from fastcontext.agent.tool.read import ReadTool
+
+        original_call = ReadTool.call
+        self.addCleanup(setattr, ReadTool, "call", original_call)
+        fastcontext_cli.configure_read_safety()
+
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as outside:
+            inside = Path(root) / "a.py"
+            inside.write_text("hello\n", encoding="utf-8")
+            outside_file = Path(outside) / "secret.py"
+            outside_file.write_text("secret\n", encoding="utf-8")
+
+            def call(path: str) -> str:
+                return asyncio.run(ReadTool().call(json.dumps({"path": path}), cwd=root))
+
+            self.assertFalse(call(str(inside)).startswith("Permission error"))
+            self.assertTrue(call(str(outside_file)).startswith("Permission error"))
+
     def test_tools_list(self) -> None:
         response = handle_request({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
         assert response is not None
