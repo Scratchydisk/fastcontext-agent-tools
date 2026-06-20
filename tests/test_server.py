@@ -154,6 +154,29 @@ class ServerTests(unittest.TestCase):
             self.assertFalse(call(str(inside)).startswith("Permission error"))
             self.assertTrue(call(str(outside_file)).startswith("Permission error"))
 
+    def test_reroot_under_strips_invented_basename(self) -> None:
+        from fastcontext_mcp.runtime import reroot_under
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve()
+            got = reroot_under(f"/{root.name}/src/x.py", root)
+            self.assertEqual(got, str(root / "src" / "x.py"))
+
+    def test_reroot_under_bare_basename_returns_root(self) -> None:
+        from fastcontext_mcp.runtime import reroot_under
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve()
+            self.assertEqual(reroot_under(f"/{root.name}", root), str(root))
+
+    def test_reroot_under_leaves_valid_in_repo_path(self) -> None:
+        from fastcontext_mcp.runtime import reroot_under
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve()
+            inside = str(root / "a" / "b.py")
+            self.assertEqual(reroot_under(inside, root), inside)
+
     def test_tools_list(self) -> None:
         response = handle_request({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
         assert response is not None
