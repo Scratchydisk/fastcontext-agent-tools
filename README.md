@@ -77,6 +77,41 @@ set them one of these ways:
     "env":{"BASE_URL":"https://YOUR-endpoint/v1","MODEL":"microsoft/FastContext-1.0-4B-RL","API_KEY":"","FASTCONTEXT_ALLOWED_ROOTS":"/"}}'
   ```
 
+### Example: connect to a remote endpoint
+
+End-to-end, assuming the model is served somewhere reachable (see
+[Hosting the model on a remote server](#hosting-the-model-on-a-remote-server)
+for the server side):
+
+```bash
+# 1. Register the server at user scope, pointed at YOUR endpoint.
+claude mcp add-json fastcontext --scope user '{
+  "command": "uvx",
+  "args": ["--from", "git+https://github.com/Scratchydisk/fastcontext-agent-tools@main", "fastcontext-mcp"],
+  "env": {
+    "BASE_URL": "https://fastcontext.example.com/v1",
+    "MODEL": "microsoft/FastContext-1.0-4B-RL",
+    "API_KEY": "sk-your-key",
+    "FASTCONTEXT_ALLOWED_ROOTS": "/"
+  }
+}'
+
+# 2. Confirm it connects (spawns the server, runs the MCP handshake).
+claude mcp get fastcontext        # Status: ✔ Connected
+
+# 3. In Claude Code, exercise the tools:
+#    "run fastcontext_health"      -> {"ok": true, ...}
+#    "use fastcontext_explore on this repo to find where X is handled"
+```
+
+Notes:
+- `API_KEY` must match the server's `--api-key`; use `""` for an unauthenticated
+  local endpoint.
+- `FASTCONTEXT_ALLOWED_ROOTS` is the local repos explore may target (`/` = no
+  restriction). It is always local — the repo files are read on *this* machine,
+  only inference is remote.
+- First call is slower while `uvx` builds the package; it's cached afterwards.
+
 The plugin assumes a **remote/already-running** FastContext endpoint. To
 self-host the model (incl. the 8 GB small-GPU recipe), see
 [docs/running-locally.md](docs/running-locally.md).
@@ -286,7 +321,11 @@ vllm serve microsoft/FastContext-1.0-4B-RL \
 ```
 
 **On the local box (MCP/agent client):** point the four env vars at the remote
-endpoint — everything else is unchanged:
+endpoint — everything else is unchanged. For the shell-based scripts
+(`kickoff.sh`, `serve-model.sh`) set them in `scripts/env.local.sh`; for Claude
+Code, pass them in the MCP registration (see
+[Install as a Claude Code plugin](#install-as-a-claude-code-plugin) for a
+copy-paste `claude mcp add-json` example):
 
 ```bash
 export BASE_URL="https://fastcontext.example.com/v1"   # remote host (see TLS note)
