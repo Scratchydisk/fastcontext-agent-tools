@@ -9,9 +9,6 @@ from pathlib import Path
 from subprocess import CompletedProcess
 from unittest import mock
 
-from fastcontext.agent.tool.grep import GrepTool
-
-from fastcontext_mcp import fastcontext_cli
 from fastcontext_mcp import runtime
 from fastcontext_mcp.runtime import (
     health,
@@ -62,18 +59,6 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(citations[0].path, "src/router.py")
         self.assertEqual(citations[0].start_line, 42)
         self.assertEqual(citations[0].end_line, 58)
-
-    def test_fastcontext_cli_uses_ripgrep_from_path(self) -> None:
-        original_path = GrepTool._rg_path
-        self.addCleanup(setattr, GrepTool, "_rg_path", original_path)
-
-        with mock.patch(
-            "fastcontext_mcp.fastcontext_cli.shutil.which",
-            return_value="/opt/homebrew/bin/rg",
-        ):
-            fastcontext_cli.configure_ripgrep()
-
-        self.assertEqual(GrepTool._rg_path, "/opt/homebrew/bin/rg")
 
     def test_validate_citations_normalizes_repo_relative_paths(self) -> None:
         with tempfile.TemporaryDirectory() as root:

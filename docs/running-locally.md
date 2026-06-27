@@ -96,7 +96,7 @@ What the block sets, and why (verified on an RTX A2000 8 GB):
 | `GPU_MEM_UTIL` | `0.85` | Leave room for the CUDA context. |
 | `ENFORCE_EAGER` | `1` | Skip CUDA-graph capture (else OOM after weights load). |
 | `VLLM_USE_FLASHINFER_SAMPLER` | `0` | flashinfer sampler may not JIT-compile; use native. |
-| `FASTCONTEXT_MAX_TOKENS` | `4000` | Cap the hardcoded 32000-token request so prompt+output stays under `CTX_LEN` with room to read files. |
+| `FC_MAX_TOKENS` | `4000` | Cap output tokens so prompt+output stays under `CTX_LEN` with room to read files (native FastContext env var, default 4096). |
 | `FASTCONTEXT_REROOT_PATHS` | `1` | Re-root paths the quantised model mangles back under the workspace. |
 
 These come at a quality/latency cost (4-bit degrades instruction-following,
@@ -127,7 +127,7 @@ Point the MCP client at the MCP venv's Python so it imports the right install
 **The MCP client does not source `env.local.sh`.** Only the shell scripts
 (`kickoff.sh`, `serve-model.sh`) read it. When Claude Code spawns the MCP
 server it passes only the `env` block above — so any var your setup relies on
-(`FASTCONTEXT_MAX_TOKENS`, `FASTCONTEXT_REROOT_PATHS`, a `PATH` that finds `rg`,
+(`FC_MAX_TOKENS`, `FASTCONTEXT_REROOT_PATHS`, a `PATH` that finds `rg`,
 `FASTCONTEXT_ALLOWED_ROOTS`) must be duplicated here too. Editing the block
 doesn't reach an already-running server; reconnect (restart Claude Code) after
 changes. `FASTCONTEXT_ALLOWED_ROOTS` may be `/` to allow exploring any path.
