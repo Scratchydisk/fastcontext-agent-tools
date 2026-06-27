@@ -19,6 +19,31 @@ It does not bundle model weights, run inference, or modify repositories. The MCP
 server runs the bundled `fastcontext.cli` module in the same Python environment
 and returns candidate file-line citations for the main agent to verify.
 
+## About this fork
+
+This is a maintained fork of [`Jakevin/fastcontext-agent-tools`](https://github.com/Jakevin/fastcontext-agent-tools).
+It adds, on top of upstream:
+
+- **Local + small-GPU serving** — `scripts/serve-model.sh` and friends run the
+  model under vLLM, with opt-in flags (`QUANT`, `GPU_MEM_UTIL`, `ENFORCE_EAGER`,
+  `CTX_LEN`, `FASTCONTEXT_REROOT_PATHS`) that make FastContext-4B usable on an
+  8 GB card. All flags are off by default, so larger GPUs keep upstream
+  behaviour. See [docs/running-locally.md](docs/running-locally.md).
+- **MCP stdio framing fix** — the server speaks newline-delimited JSON per the
+  MCP spec (upstream used LSP-style `Content-Length` framing, which spec-compliant
+  clients like Claude Code cannot connect to).
+- **Path re-rooting** for heavily-quantised models that mangle the workspace path
+  in tool arguments and citations.
+
+It pins `microsoft/fastcontext` at commit
+[`1522d6d`](https://github.com/microsoft/fastcontext/tree/1522d6d6b5e040e817b468e12826662aa069a8b0),
+which incorporates five fixes reported from this work (microsoft/fastcontext
+issues #18–#22: ReadTool path traversal, GrepTool cwd, configurable max tokens,
+ripgrep validation, negative read offset). Those upstream fixes let the fork drop
+its earlier monkeypatch workarounds; only the framing fix and the quantised-model
+re-rooting remain fork-specific. The corresponding PRs against the upstream
+wrapper repo are open but unmerged.
+
 ## One-Line LLM Agent Install Prompt
 
 Ask an LLM agent:
