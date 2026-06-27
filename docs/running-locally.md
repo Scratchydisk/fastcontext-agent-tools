@@ -67,7 +67,9 @@ export HF_TOKEN=hf_...                 # or set it in scripts/env.local.sh
 - **First-boot weight download.** Without `HF_TOKEN` the unauthenticated HF Hub
   pull can rate-limit/stall; set a token to make it reliable.
 - **Context length** defaults to 65536 (`CTX_LEN` env to override); the model
-  supports up to 262144 and a 24 GB card has room.
+  supports up to 262144. That default assumes a ~24 GB card — on smaller cards
+  vLLM will refuse to start ("estimated maximum model length is N"). See
+  [Context length by VRAM](#context-length-by-vram) for what fits.
 - **ripgrep is required.** The `GREP`/`GLOB` tools shell out to `rg`. If it's
   not on `PATH`, searches fail with "No such file or directory: 'rg'", the agent
   reads nothing, and `explore` returns no/garbage citations. Install it
@@ -101,6 +103,30 @@ What the block sets, and why (verified on an RTX A2000 8 GB):
 
 These come at a quality/latency cost (4-bit degrades instruction-following,
 eager mode is slower). On a larger card, leave them unset for full fidelity.
+
+## Context length by VRAM
+
+The default `CTX_LEN=65536` only fits on a ~24 GB card. BF16 weights are a fixed
+~8 GB; the rest of VRAM becomes KV cache, and the KV cache for this model costs
+roughly ~140 KB per token — so `max_model_len` scales with whatever's left after
+the weights. If you ask for more than fits, vLLM refuses to start and prints the
+estimated maximum (e.g. *"estimated maximum model length is 20080"*) rather than
+OOM-ing mid-run.
+
+| VRAM | Precision | Suggested `CTX_LEN` | Extra env |
+|---|---|---|---|
+| ~8 GB | 4-bit (`QUANT=bitsandbytes`) | `16384` | the full small-GPU block above |
+| ~12 GB | full BF16 | `16384` (safe) … `24576` (push) | `GPU_MEM_UTIL=0.95` for the upper end |
+| ~16 GB | full BF16 | `32768` | — |
+| ≥24 GB | full BF16 | `65536` (default), up toward `262144` | — |
+
+Rules of thumb:
+- Keep `FC_MAX_TOKENS` (default 4096) well below `CTX_LEN` — the agent's prompt
+  grows as it reads files, and `prompt + output` must stay under `CTX_LEN`.
+- Hitting the ceiling? Lower `CTX_LEN` first; raising `GPU_MEM_UTIL` (toward 0.95)
+  buys only a little more KV cache since the weights are fixed.
+- Prefer lowering `CTX_LEN` over enabling `QUANT` on a 12 GB+ card — 4-bit frees
+  memory but degrades quality (and then needs `FASTCONTEXT_REROOT_PATHS`).
 
 ## Registering with Claude Code (after Checkpoint B works)
 
