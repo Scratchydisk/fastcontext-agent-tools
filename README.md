@@ -54,6 +54,10 @@ server registers in one step (no `~/.claude.json` editing):
 /plugin install fastcontext@scratchydisk
 ```
 
+The plugin bundles both the MCP server and a **`/fastcontext` slash command** —
+`/fastcontext <what to find>` delegates a code-location search to FastContext and
+reports the verified file:line citations (no need to remember the tool name).
+
 The bundled `.mcp.json` launches the server with `uvx` (requires [uv](https://docs.astral.sh/uv/)
 on `PATH`) straight from git — no manual venv or `pip install`:
 
