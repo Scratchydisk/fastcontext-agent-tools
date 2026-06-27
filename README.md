@@ -1,94 +1,82 @@
 # FastContext Agent Tools
 
-MCP server and Codex skill for using Microsoft's FastContext as a read-only
-repository exploration subagent.
+An MCP server and Codex skill that let a coding agent delegate repository
+exploration to Microsoft's FastContext, a read-only search subagent.
 
 ![Architecture](docs/assets/architecture.svg)
 
-FastContext answers one narrow question for a coding agent:
+FastContext answers one narrow question for your main agent:
 
-> Which files and line ranges should the main agent inspect before solving this task?
+> Which files and line ranges should I read before solving this task?
 
-This repository provides the complete integration:
+This repository provides the integration around that:
 
-- `fastcontext-mcp`: a Python stdio MCP server that installs Microsoft FastContext as a pinned runtime dependency.
-- `skills/fastcontext-explorer`: a Codex skill that teaches an agent when to delegate repository exploration.
+- `fastcontext-mcp`, a Python stdio MCP server that installs Microsoft
+  FastContext as a pinned dependency.
+- `skills/fastcontext-explorer`, a Codex skill that tells an agent when to
+  delegate exploration.
+- A Claude Code plugin (this repo is also a plugin marketplace).
 - MCP setup guides in English, Traditional Chinese, and Japanese.
 
 It does not bundle model weights, run inference, or modify repositories. The MCP
-server runs the bundled `fastcontext.cli` module in the same Python environment
-and returns candidate file-line citations for the main agent to verify.
+server runs the bundled `fastcontext.cli` in the same Python environment and
+returns candidate file-line citations for the main agent to verify.
 
 ## About this fork
 
-This is a maintained fork of [`Jakevin/fastcontext-agent-tools`](https://github.com/Jakevin/fastcontext-agent-tools).
-It adds, on top of upstream:
+This is a maintained fork of [`Jakevin/fastcontext-agent-tools`](https://github.com/Jakevin/fastcontext-agent-tools)
+that adds:
 
-- **Local + small-GPU serving** — `scripts/serve-model.sh` and friends run the
-  model under vLLM, with opt-in flags (`QUANT`, `GPU_MEM_UTIL`, `ENFORCE_EAGER`,
-  `CTX_LEN`, `FASTCONTEXT_REROOT_PATHS`) that make FastContext-4B usable on an
-  8 GB card. All flags are off by default, so larger GPUs keep upstream
-  behaviour. See [docs/running-locally.md](docs/running-locally.md).
-- **MCP stdio framing fix** — the server speaks newline-delimited JSON per the
-  MCP spec (upstream used LSP-style `Content-Length` framing, which spec-compliant
-  clients like Claude Code cannot connect to).
-- **Path re-rooting** for heavily-quantised models that mangle the workspace path
-  in tool arguments and citations.
+- **Local and small-GPU serving.** `scripts/serve-model.sh` runs the model under
+  vLLM, with opt-in flags (`QUANT`, `GPU_MEM_UTIL`, `ENFORCE_EAGER`, `CTX_LEN`)
+  that fit FastContext-4B onto an 8 GB card. The flags are off by default, so
+  larger GPUs behave as upstream does. See [docs/running-locally.md](docs/running-locally.md).
+- **An MCP stdio framing fix.** The server speaks newline-delimited JSON, as the
+  MCP spec requires. Upstream used LSP-style `Content-Length` framing, which
+  spec-compliant clients such as Claude Code cannot connect to.
+- **Citation path re-rooting** (`FASTCONTEXT_REROOT_PATHS`). FastContext
+  sometimes truncates the workspace path in its tool arguments and citations;
+  this rewrites those paths back under the repository so the results resolve.
 
-It pins `microsoft/fastcontext` at commit
+The `microsoft/fastcontext` dependency is pinned at commit
 [`1522d6d`](https://github.com/microsoft/fastcontext/tree/1522d6d6b5e040e817b468e12826662aa069a8b0),
-which incorporates five fixes reported from this work (microsoft/fastcontext
-issues #18–#22: ReadTool path traversal, GrepTool cwd, configurable max tokens,
-ripgrep validation, negative read offset). Those upstream fixes let the fork drop
-its earlier monkeypatch workarounds; only the framing fix and the quantised-model
-re-rooting remain fork-specific. The corresponding PRs against the upstream
-wrapper repo are open but unmerged.
+which includes five fixes reported from this work (issues #18–#22).
 
 ## Install as a Claude Code plugin
 
-For Claude Code, this repo doubles as a plugin **marketplace**, so the MCP
-server registers in one step (no `~/.claude.json` editing):
+This repo is a plugin marketplace, so Claude Code can register the server in one
+step without editing `~/.claude.json`:
 
 ```
 /plugin marketplace add Scratchydisk/fastcontext-agent-tools
 /plugin install fastcontext@scratchydisk
 ```
 
-The plugin bundles both the MCP server and a **`/fastcontext` slash command** —
-`/fastcontext <what to find>` delegates a code-location search to FastContext and
-reports the verified file:line citations (no need to remember the tool name).
+The plugin includes a `/fastcontext` slash command. Type `/fastcontext <what to
+find>` and it runs an exploration and reports the verified citations, so you
+don't have to call the tool by name.
 
-The bundled `.mcp.json` launches the server with `uvx` (requires [uv](https://docs.astral.sh/uv/)
-on `PATH`) straight from git — no manual venv or `pip install`:
+The bundled `.mcp.json` starts the server with `uvx` straight from git, so there
+is no venv to create or package to `pip install` (you need [uv](https://docs.astral.sh/uv/)
+on `PATH`):
 
 ```jsonc
 "command": "uvx",
 "args": ["--from", "git+https://github.com/Scratchydisk/fastcontext-agent-tools@main", "fastcontext-mcp"]
 ```
 
-**Point it at your endpoint.** The plugin defaults to a placeholder
-`BASE_URL`. Claude Code does **not** reliably expand `${VAR}` in a plugin's
-`.mcp.json` `env` block (Claude Code issue #9427), so the values are literal —
-set them one of these ways:
+### Point it at your endpoint
 
-- **Single shared endpoint:** edit `BASE_URL` (and `API_KEY` if needed) in
-  `.mcp.json` in your fork before publishing the marketplace.
-- **Per-machine endpoints:** skip the plugin's MCP entry and register it at user
-  scope instead, where you control the values:
-  ```bash
-  claude mcp add-json fastcontext --scope user '{"command":"uvx",
-    "args":["--from","git+https://github.com/Scratchydisk/fastcontext-agent-tools@main","fastcontext-mcp"],
-    "env":{"BASE_URL":"https://YOUR-endpoint/v1","MODEL":"microsoft/FastContext-1.0-4B-RL","API_KEY":"","FASTCONTEXT_ALLOWED_ROOTS":"/"}}'
-  ```
+The plugin ships with a placeholder `BASE_URL`. Claude Code does not reliably
+expand `${VAR}` in a plugin's `.mcp.json` env block ([Claude Code #9427](https://github.com/anthropics/claude-code/issues/9427)),
+so set real values literally, one of two ways:
 
-### Example: connect to a remote endpoint
-
-End-to-end, assuming the model is served somewhere reachable (see
-[Hosting the model on a remote server](#hosting-the-model-on-a-remote-server)
-for the server side):
+- For a single shared endpoint, edit `BASE_URL` (and `API_KEY`) in `.mcp.json`
+  in your fork before publishing the marketplace.
+- For a per-machine endpoint, register the server at user scope instead, where
+  you control the values:
 
 ```bash
-# 1. Register the server at user scope, pointed at YOUR endpoint.
 claude mcp add-json fastcontext --scope user '{
   "command": "uvx",
   "args": ["--from", "git+https://github.com/Scratchydisk/fastcontext-agent-tools@main", "fastcontext-mcp"],
@@ -96,57 +84,59 @@ claude mcp add-json fastcontext --scope user '{
     "BASE_URL": "https://fastcontext.example.com/v1",
     "MODEL": "microsoft/FastContext-1.0-4B-RL",
     "API_KEY": "sk-your-key",
-    "FASTCONTEXT_ALLOWED_ROOTS": "/"
+    "FASTCONTEXT_ALLOWED_ROOTS": "/",
+    "FASTCONTEXT_REROOT_PATHS": "1"
   }
 }'
 
-# 2. Confirm it connects (spawns the server, runs the MCP handshake).
-claude mcp get fastcontext        # Status: ✔ Connected
-
-# 3. In Claude Code, exercise the tools:
-#    "run fastcontext_health"      -> {"ok": true, ...}
-#    "use fastcontext_explore on this repo to find where X is handled"
+# Confirm it connects:
+claude mcp get fastcontext        # Status: Connected
 ```
 
 Notes:
-- `API_KEY` must match the server's `--api-key`; use `""` for an unauthenticated
-  local endpoint.
-- `FASTCONTEXT_ALLOWED_ROOTS` is the local repos explore may target (`/` = no
-  restriction). It is always local — the repo files are read on *this* machine,
-  only inference is remote.
-- First call is slower while `uvx` builds the package; it's cached afterwards.
 
-The plugin assumes a **remote/already-running** FastContext endpoint. To
-self-host the model (incl. the 8 GB small-GPU recipe), see
-[docs/running-locally.md](docs/running-locally.md).
+- `API_KEY` must match the server's `--api-key`. Use `""` for an unauthenticated
+  endpoint.
+- `FASTCONTEXT_ALLOWED_ROOTS` lists the local repositories exploration may
+  target (`/` allows any path). The files are always read on the machine running
+  the MCP server; only inference is remote.
+- `FASTCONTEXT_REROOT_PATHS=1` is recommended on any endpoint. It corrects
+  truncated citation paths and does nothing to paths that are already correct.
+- The first call is slower while `uvx` builds the package, then it is cached.
 
-## One-Line LLM Agent Install Prompt
+The plugin assumes the model is already being served somewhere. To self-host it,
+including the 8 GB small-GPU recipe, see [docs/running-locally.md](docs/running-locally.md).
 
-Ask an LLM agent:
+## Install for Codex
 
-> Install FastContext Agent Tools from `https://github.com/Scratchydisk/fastcontext-agent-tools`; its package installation includes Microsoft FastContext. Configure `python -m fastcontext_mcp` as a stdio MCP server with `BASE_URL`, `MODEL`, `API_KEY`, and `FASTCONTEXT_ALLOWED_ROOTS`, then enable `skills/fastcontext-explorer`.
+Ask an agent to set it up:
 
-Direct install command for Codex-style local skills:
+> Install FastContext Agent Tools from `https://github.com/Scratchydisk/fastcontext-agent-tools`.
+> Its package installation includes Microsoft FastContext. Configure
+> `python -m fastcontext_mcp` as a stdio MCP server with `BASE_URL`, `MODEL`,
+> `API_KEY`, and `FASTCONTEXT_ALLOWED_ROOTS`, then enable `skills/fastcontext-explorer`.
+
+Or run the install directly:
 
 ```bash
 git clone https://github.com/Scratchydisk/fastcontext-agent-tools && cd fastcontext-agent-tools && python -m pip install -e . && mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills" && ln -sfn "$(pwd)/skills/fastcontext-explorer" "${CODEX_HOME:-$HOME/.codex}/skills/fastcontext-explorer"
 ```
 
-## Why This Exists
+## How it works
 
-Microsoft FastContext separates repository exploration from code solving. The
-upstream project describes a dedicated explorer that uses read-only `READ`,
-`GLOB`, and `GREP` tools, issues parallel tool calls, and returns compact
-`<final_answer>` citations. Microsoft reports Mini-SWE-Agent integration gains
-of up to 5.5 score improvement and up to 60% main-agent token reduction.
+Microsoft FastContext separates repository exploration from code solving. A
+dedicated explorer uses read-only `READ`, `GLOB`, and `GREP` tools, issues
+parallel tool calls, and returns compact `<final_answer>` citations. Microsoft
+reports Mini-SWE-Agent gains of up to 5.5 points and up to 60% fewer main-agent
+tokens.
 
-Primary sources:
+Sources:
 
 - Microsoft FastContext: <https://github.com/microsoft/fastcontext>
 - Model card: <https://huggingface.co/microsoft/FastContext-1.0-4B-SFT>
 - Paper: <https://arxiv.org/abs/2606.14066>
 
-## Quick Install
+## Manual install
 
 ```bash
 git clone https://github.com/Scratchydisk/fastcontext-agent-tools
@@ -156,33 +146,29 @@ python -m fastcontext_mcp --print-health
 ```
 
 If your Python scripts directory is on `PATH`, `fastcontext-mcp --print-health`
-works too.
+works too. Installing the package also installs Microsoft FastContext from the
+pinned source revision, so no separate FastContext checkout is needed.
 
-## Requirements
+Requirements:
 
-- Python 3.12+.
-- An OpenAI-compatible endpoint serving a FastContext-compatible model.
+- Python 3.12 or newer.
+- An OpenAI-compatible endpoint serving a FastContext model.
 
-Installing this package also installs Microsoft FastContext from the pinned
-official source revision. No separate FastContext checkout or CLI installation
-is required.
-
-Endpoint environment:
+Set the endpoint environment before starting the server:
 
 ```bash
 export BASE_URL="http://127.0.0.1:30000/v1"
-export MODEL="microsoft/FastContext-1.0-4B-SFT"
+export MODEL="microsoft/FastContext-1.0-4B-RL"
 export API_KEY="your-api-key"
 export FASTCONTEXT_ALLOWED_ROOTS="/path/to/repos"
 ```
 
-`FASTCONTEXT_ALLOWED_ROOTS` is an `os.pathsep` separated allowlist. If unset,
-the MCP server only allows repositories under the directory where the server was
-started.
+`FASTCONTEXT_ALLOWED_ROOTS` is an `os.pathsep`-separated allowlist. If unset, the
+server only allows repositories under the directory it was started in.
 
-## MCP Configuration
+## MCP configuration
 
-Example stdio config:
+For an MCP client other than the Claude Code plugin, add a stdio server:
 
 ```json
 {
@@ -192,31 +178,25 @@ Example stdio config:
       "args": ["-m", "fastcontext_mcp"],
       "env": {
         "BASE_URL": "http://127.0.0.1:30000/v1",
-        "MODEL": "microsoft/FastContext-1.0-4B-SFT",
+        "MODEL": "microsoft/FastContext-1.0-4B-RL",
         "API_KEY": "your-api-key",
-        "FASTCONTEXT_ALLOWED_ROOTS": "/path/to/repos"
+        "FASTCONTEXT_ALLOWED_ROOTS": "/path/to/repos",
+        "FASTCONTEXT_REROOT_PATHS": "1"
       }
     }
   }
 }
 ```
 
-Localized MCP guides:
+Localized guides: [Traditional Chinese](docs/mcp.zh-TW.md), [Japanese](docs/mcp.ja.md).
 
-- Traditional Chinese: [docs/mcp.zh-TW.md](docs/mcp.zh-TW.md)
-- Japanese: [docs/mcp.ja.md](docs/mcp.ja.md)
+## MCP tools
 
-## MCP Tools
-
-### `fastcontext_health`
-
-Checks whether the bundled `fastcontext.cli` module is importable and whether
+`fastcontext_health` checks that the bundled `fastcontext.cli` is importable and
 the endpoint environment is set.
 
-### `fastcontext_explore`
-
-Runs FastContext against a repository and returns parsed citations plus raw
-output.
+`fastcontext_explore` runs FastContext against a repository and returns parsed
+citations plus the raw output:
 
 ```json
 {
@@ -228,91 +208,62 @@ output.
 }
 ```
 
-### `fastcontext_explore_with_trace`
+`fastcontext_explore_with_trace` does the same but saves a JSONL trajectory. A
+relative `trajectory_path` resolves inside `repo_path`.
 
-Same as `fastcontext_explore`, but saves a FastContext JSONL trajectory. Relative
-`trajectory_path` values are resolved inside `repo_path`.
+Citations are candidate evidence. Read the cited files before changing code.
 
-## Codex Skill
+## Codex skill
 
-The bundled skill lives at:
-
-```text
-skills/fastcontext-explorer
-```
-
-Install by copying or symlinking that folder into your Codex skills directory:
+The skill lives at `skills/fastcontext-explorer`. Install it by symlinking the
+folder into your Codex skills directory:
 
 ```bash
 mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
 ln -s "$(pwd)/skills/fastcontext-explorer" "${CODEX_HOME:-$HOME/.codex}/skills/fastcontext-explorer"
 ```
 
-Use the skill when a coding task requires repository localization before
-editing. FastContext citations are candidate evidence; the main agent should
-still read the cited files before changing code.
+Use it when a task needs repository localization before editing.
 
-Additional project report:
+## Running the model locally
 
-- Full report: [docs/REPORT.md](docs/REPORT.md)
+Serving the model is two independent processes:
 
-## Local deployment (this fork)
+1. The model server: vLLM serving `FastContext-1.0-4B-RL` on an
+   OpenAI-compatible endpoint at `http://127.0.0.1:30000/v1`. Long-running, uses
+   the GPU.
+2. The MCP server: `python -m fastcontext_mcp`, spawned over stdio by the agent
+   client. Lightweight (no torch). It shells out to `fastcontext.cli`, which
+   calls the model server and returns citations.
 
-Helper scripts for running the whole thing locally live in `scripts/`
-(`env.sh`, `serve-model.sh`, `kickoff.sh`); see
-[docs/running-locally.md](docs/running-locally.md) for the full guide. The setup
-is two independent processes:
+The `READ`, `GLOB`, and `GREP` tools run inside the `fastcontext.cli` process,
+not on the model server, so the repository being explored must live on the
+machine running the MCP server. The model server only does inference.
 
-1. **Model server** — vLLM serving `FastContext-1.0-4B-RL` on an
-   OpenAI-compatible endpoint at `http://127.0.0.1:30000/v1`. Long-running, GPU.
-2. **MCP server** — `python -m fastcontext_mcp`, spawned over stdio by the agent
-   client. Lightweight (no torch); shells out to the bundled `fastcontext.cli`,
-   which calls the model server and returns citations.
-
-Note on where files are read: the `READ`/`GLOB`/`GREP` tools run **inside the
-`fastcontext.cli` process** (the MCP box), not on the model server. The model
-server only does inference. So the repository being explored must live on the
-machine running the MCP, and `FASTCONTEXT_ALLOWED_ROOTS` is always local.
-
-### Status so far
-
-- **Checkpoint A — MCP works unchanged: verified.** Clean Python 3.12 venv (via
-  `uv`), `pip install -e .` pulls the SHA-pinned Microsoft FastContext
-  (`fastcontext==0.1.0`, lightweight: openai/httpx/pydantic, no torch),
-  `--print-health` returns `"ok": true`, and the bundled test suite passes
-  (13/13).
-- **Model serving — stack confirmed for Blackwell.** vLLM 0.23.0 with
-  torch 2.11+cu130 runs on the RTX 5090 Laptop (sm_120); the server starts,
-  resolves `Qwen3ForCausalLM`, and loads weights with FlashAttention 2 /
-  FlashInfer kernels. Launched with `--enable-auto-tool-choice
-  --tool-call-parser hermes` (required — `llm.py` reads server-side
-  `tool_calls`).
-- **Live `explore` — not yet verified.** First-boot weight download from the HF
-  Hub stalled (unauthenticated rate limit); set `HF_TOKEN` to make the initial
-  pull reliable, then re-run `serve-model.sh` and `./kickoff.sh explore`.
-
-### Run it
+Run it with the helper scripts:
 
 ```bash
-# terminal 1 — serve the model (first run downloads ~8 GB of weights)
-export HF_TOKEN=hf_...               # recommended; avoids the unauthenticated stall
-./scripts/serve-model.sh             # wait for "Application startup complete" on :30000
+# Terminal 1: serve the model (the first run downloads ~8 GB of weights).
+export HF_TOKEN=hf_...        # avoids an unauthenticated Hugging Face rate-limit stall
+./scripts/serve-model.sh      # wait for "Application startup complete" on :30000
 
-# terminal 2 — health + a live explore against a repo
-./scripts/kickoff.sh                 # Checkpoint A (no model needed)
-./scripts/kickoff.sh explore         # Checkpoint B (needs the model server above)
+# Terminal 2: health check, then a live exploration.
+./scripts/kickoff.sh          # configuration health, no model needed
+./scripts/kickoff.sh explore  # runs a real exploration against this repo
 ```
 
-If `explore` returns no citations, the tool-call parser is the first suspect —
-try `--tool-call-parser qwen3_xml` in `serve-model.sh`.
+`serve-model.sh` already passes `--enable-auto-tool-choice --tool-call-parser
+hermes`, which FastContext requires (it reads server-side `tool_calls`). If
+`explore` returns no citations, try `--tool-call-parser qwen3_xml` instead.
+For VRAM and context-length sizing, see [docs/running-locally.md](docs/running-locally.md).
 
 ## Hosting the model on a remote server
 
-Only the **inference** moves to the remote box; the MCP server and the
-`fastcontext.cli` (which reads your repo files) stay local. So the remote host
-needs the GPU and the model; your laptop keeps the repos.
+Only inference moves to the remote box. The MCP server and `fastcontext.cli`,
+which read your repository files, stay local. The remote host needs the GPU and
+the model; your machine keeps the repositories.
 
-**On the remote GPU host:**
+On the remote GPU host:
 
 ```bash
 uv pip install vllm
@@ -321,63 +272,59 @@ vllm serve microsoft/FastContext-1.0-4B-RL \
     --enable-auto-tool-choice --tool-call-parser hermes \
     --max-model-len 65536 --gpu-memory-utilization 0.9 \
     --trust-remote-code \
-    --api-key "$REMOTE_API_KEY"          # require auth, since it's network-exposed
+    --api-key "$REMOTE_API_KEY"
 ```
 
-**On the local box (MCP/agent client):** point the four env vars at the remote
-endpoint — everything else is unchanged. For the shell-based scripts
-(`kickoff.sh`, `serve-model.sh`) set them in `scripts/env.local.sh`; for Claude
-Code, pass them in the MCP registration (see
-[Install as a Claude Code plugin](#install-as-a-claude-code-plugin) for a
-copy-paste `claude mcp add-json` example):
+On the local machine, point the endpoint variables at the remote host. For the
+shell scripts set them in `scripts/env.local.sh`; for Claude Code, pass them in
+the MCP registration (see the `claude mcp add-json` example above).
 
 ```bash
-export BASE_URL="https://fastcontext.example.com/v1"   # remote host (see TLS note)
+export BASE_URL="https://fastcontext.example.com/v1"
 export MODEL="microsoft/FastContext-1.0-4B-RL"
-export API_KEY="$REMOTE_API_KEY"                       # must match the server's --api-key
-export FASTCONTEXT_ALLOWED_ROOTS="/home/you/git"       # still LOCAL — repos live here
+export API_KEY="$REMOTE_API_KEY"                  # must match the server's --api-key
+export FASTCONTEXT_ALLOWED_ROOTS="/home/you/git"  # local: your repositories live here
 ```
 
-**What needs doing for a safe remote setup:**
+Running this safely:
 
-- **Transport security.** vLLM serves plain HTTP with no TLS. Don't expose
-  `:30000` directly. Either (a) put it behind a reverse proxy (nginx/Caddy) that
-  terminates TLS and forwards to `127.0.0.1:30000`, then use an `https://` BASE_URL,
-  or (b) keep vLLM bound to localhost on the remote host and reach it over an SSH
-  tunnel (`ssh -L 30000:127.0.0.1:30000 gpuhost`), leaving BASE_URL as
-  `http://127.0.0.1:30000/v1`.
-- **Authentication.** Set `--api-key` on the server and the matching `API_KEY`
-  locally. Without it, anyone who can reach the port can use your GPU.
-- **Firewall.** Restrict the port to known clients (security group / ufw), even
-  behind a proxy.
-- **Latency & timeouts.** Each `fastcontext_explore` is a multi-turn loop, so
-  every turn is a network round trip to the remote model. Keep the host close
-  (region/VPN), and raise `timeout_seconds` on the tool call if the link is slow.
-- **VRAM sizing.** The 4B model needs ~8 GB plus KV cache; raise
-  `--max-model-len` toward 262144 only if the remote card has the headroom.
-- **Alternative:** any OpenAI-compatible managed endpoint that hosts the model
-  works too — just set `BASE_URL`/`API_KEY`/`MODEL` accordingly; no other change.
+- **Transport security.** vLLM serves plain HTTP. Don't expose `:30000`
+  directly. Either put it behind a TLS reverse proxy (nginx, Caddy) forwarding to
+  `127.0.0.1:30000` and use an `https://` `BASE_URL`, or keep vLLM bound to
+  localhost and reach it over an SSH tunnel
+  (`ssh -L 30000:127.0.0.1:30000 gpuhost`), leaving `BASE_URL` as
+  `http://127.0.0.1:30000/v1`. The tunnel is the simplest secure option and
+  needs no API key.
+- **Authentication.** With direct exposure, set `--api-key` on the server and a
+  matching `API_KEY` locally. Otherwise anyone who reaches the port can use your
+  GPU.
+- **Firewall.** Restrict the port to known clients even behind a proxy.
+- **Latency.** Each exploration is a multi-turn loop, so every turn is a round
+  trip to the model. Keep the host close, and raise `timeout_seconds` on the
+  call if the link is slow.
+- **Managed endpoints.** Any OpenAI-compatible service hosting the model works.
+  Set `BASE_URL`, `API_KEY`, and `MODEL` and nothing else changes.
 
 ## Development
-
-Run tests:
 
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests
 ```
 
-Validate the bundled Codex skill:
+Validate the Codex skill:
 
 ```bash
 python /path/to/skill-creator/scripts/quick_validate.py skills/fastcontext-explorer
 ```
 
-## Safety Notes
+## Safety
 
-- The MCP server exposes no edit/write tools.
+- The server exposes no edit or write tools.
 - `repo_path` must resolve under `FASTCONTEXT_ALLOWED_ROOTS`.
 - Secrets are read from environment variables only.
 - Trajectories are written only when requested.
+
+A full project report is in [docs/REPORT.md](docs/REPORT.md).
 
 ## License
 

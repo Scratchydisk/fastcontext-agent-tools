@@ -41,7 +41,7 @@ All paths are derived from the script location, so the repo can live anywhere.
 ./scripts/kickoff.sh          # creates .venv (py3.12), installs, prints health
 ```
 Expect `"ok": true`, the bundled FastContext importing, and the test suite
-passing (`python -m unittest tests.test_server` → 19/19).
+passing (`python -m unittest tests.test_server` → 18/18).
 
 ## Checkpoint B — live exploration (needs the model)
 
@@ -99,10 +99,14 @@ What the block sets, and why (verified on an RTX A2000 8 GB):
 | `ENFORCE_EAGER` | `1` | Skip CUDA-graph capture (else OOM after weights load). |
 | `VLLM_USE_FLASHINFER_SAMPLER` | `0` | flashinfer sampler may not JIT-compile; use native. |
 | `FC_MAX_TOKENS` | `4000` | Cap output tokens so prompt+output stays under `CTX_LEN` with room to read files (native FastContext env var, default 4096). |
-| `FASTCONTEXT_REROOT_PATHS` | `1` | Re-root paths the quantised model mangles back under the workspace. |
+| `FASTCONTEXT_REROOT_PATHS` | `1` | Re-root truncated citation/tool paths back under the workspace. Worth keeping on at any precision (see note below); quantisation just makes the truncation more frequent. |
 
-These come at a quality/latency cost (4-bit degrades instruction-following,
-eager mode is slower). On a larger card, leave them unset for full fidelity.
+The serving flags (`QUANT`, `ENFORCE_EAGER`, `GPU_MEM_UTIL`, `CTX_LEN`) come at a
+quality or latency cost, so leave them unset on a larger card. `FASTCONTEXT_REROOT_PATHS`
+is the exception: a benchmark on a full-precision 12 GB endpoint still saw the
+model truncate paths in some citations, and turning re-rooting on raised the
+file-hit rate from 3/5 to 5/5. Keep it on regardless of GPU; it leaves
+already-correct paths untouched.
 
 ## Context length by VRAM
 
@@ -125,8 +129,8 @@ Rules of thumb:
   grows as it reads files, and `prompt + output` must stay under `CTX_LEN`.
 - Hitting the ceiling? Lower `CTX_LEN` first; raising `GPU_MEM_UTIL` (toward 0.95)
   buys only a little more KV cache since the weights are fixed.
-- Prefer lowering `CTX_LEN` over enabling `QUANT` on a 12 GB+ card — 4-bit frees
-  memory but degrades quality (and then needs `FASTCONTEXT_REROOT_PATHS`).
+- Prefer lowering `CTX_LEN` over enabling `QUANT` on a 12 GB+ card. 4-bit frees
+  memory but degrades quality.
 
 ## Registering with Claude Code (after Checkpoint B works)
 
