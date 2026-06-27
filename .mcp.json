@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "fastcontext": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/Scratchydisk/fastcontext-agent-tools@main",
+        "fastcontext-mcp"
+      ],
+      "env": {
+        "BASE_URL": "https://your-fastcontext-endpoint/v1",
+        "MODEL": "microsoft/FastContext-1.0-4B-RL",
+        "API_KEY": "",
+        "FASTCONTEXT_ALLOWED_ROOTS": "/",
+        "FC_MAX_TOKENS": "4096"
+      }
+    }
+  }
+}

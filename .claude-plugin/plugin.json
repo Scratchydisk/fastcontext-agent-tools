@@ -1,0 +1,12 @@
+{
+  "name": "fastcontext",
+  "version": "0.2.1",
+  "description": "Repository-exploration subagent over MCP: delegates code search to a FastContext endpoint and returns compact file:line citations.",
+  "author": {
+    "name": "Scratchydisk",
+    "url": "https://github.com/Scratchydisk"
+  },
+  "homepage": "https://github.com/Scratchydisk/fastcontext-agent-tools",
+  "license": "MIT",
+  "keywords": ["mcp", "fastcontext", "code-exploration", "subagent"]
+}

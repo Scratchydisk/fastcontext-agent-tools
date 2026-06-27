@@ -1,0 +1,14 @@
+{
+  "name": "scratchydisk",
+  "owner": {
+    "name": "Scratchydisk",
+    "url": "https://github.com/Scratchydisk"
+  },
+  "plugins": [
+    {
+      "name": "fastcontext",
+      "source": ".",
+      "description": "FastContext repository-exploration subagent over MCP. Points at an OpenAI-compatible FastContext endpoint (remote by default; see env)."
+    }
+  ]
+}
