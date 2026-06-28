@@ -298,7 +298,10 @@ Localized guides: [Traditional Chinese](docs/mcp.zh-TW.md), [Japanese](docs/mcp.
 ## MCP tools
 
 `fastcontext_health` checks that the bundled `fastcontext.cli` is importable and
-the endpoint environment is set.
+the endpoint environment is set. It reports the configured values (`BASE_URL`,
+`MODEL`, allowed roots, and the tuning vars), with `API_KEY` masked, plus an
+`effective` block showing what actually takes effect once defaults are applied
+(so you can see, for example, that `FC_TEMPERATURE` is falling back to 0.7).
 
 `fastcontext_explore` runs FastContext against a repository and returns parsed
 citations plus the raw output:

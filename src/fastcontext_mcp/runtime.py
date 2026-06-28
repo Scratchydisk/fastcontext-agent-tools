@@ -126,6 +126,24 @@ def _env_present(name: str) -> bool:
     return bool(os.environ.get(name))
 
 
+def _masked_secret(name: str) -> str | None:
+    """Report a secret's presence without leaking it (last 4 chars only)."""
+    value = os.environ.get(name)
+    if not value:
+        return None
+    if len(value) <= 4:
+        return "set"
+    return f"set (…{value[-4:]})"
+
+
+def _effective_retries() -> int:
+    """Max extra attempts run_fastcontext makes on an empty citation result."""
+    try:
+        return max(0, int(os.getenv("FASTCONTEXT_EXPLORE_RETRIES", "2")))
+    except ValueError:
+        return 2
+
+
 def _fastcontext_available() -> bool:
     try:
         return importlib.util.find_spec(FASTCONTEXT_MODULE) is not None
@@ -185,15 +203,29 @@ def health() -> dict[str, Any]:
         "fastcontext_module": FASTCONTEXT_MODULE if available else None,
         "fastcontext_command": [sys.executable, "-m", FASTCONTEXT_MODULE],
         "env": {
-            "BASE_URL": _env_present("BASE_URL"),
-            "MODEL": _env_present("MODEL"),
-            "API_KEY": _env_present("API_KEY"),
+            "BASE_URL": os.getenv("BASE_URL"),
+            "MODEL": os.getenv("MODEL"),
+            "API_KEY": _masked_secret("API_KEY"),
             "FASTCONTEXT_ALLOWED_ROOTS": [str(root) for root in allowed_roots()],
+            "FC_TEMPERATURE": os.getenv("FC_TEMPERATURE"),
+            "FC_MAX_TOKENS": os.getenv("FC_MAX_TOKENS"),
+            "FASTCONTEXT_REROOT_PATHS": os.getenv("FASTCONTEXT_REROOT_PATHS"),
+            "FASTCONTEXT_EXPLORE_RETRIES": os.getenv("FASTCONTEXT_EXPLORE_RETRIES"),
+        },
+        "effective": {
+            # what actually takes effect once defaults are applied
+            "fc_temperature": os.getenv("FC_TEMPERATURE") or "0.7 (FastContext default)",
+            "fc_max_tokens": os.getenv("FC_MAX_TOKENS") or "4096 (FastContext default)",
+            "reroot_paths": truthy(os.getenv("FASTCONTEXT_REROOT_PATHS")),
+            "explore_max_attempts": _effective_retries() + 1,
         },
         "notes": [
             "Microsoft FastContext is installed with this MCP package.",
             "Set BASE_URL and MODEL for the OpenAI-compatible endpoint.",
-            "Set API_KEY when your endpoint requires authentication.",
+            "Set API_KEY when your endpoint requires authentication (shown masked).",
+            "Recommended: FC_TEMPERATURE=0.2 and FASTCONTEXT_REROOT_PATHS=1. "
+            "Unset tuning vars fall back to FastContext's own defaults (temp 0.7, "
+            "no re-rooting), which are less accurate for code location.",
         ],
     }
 
