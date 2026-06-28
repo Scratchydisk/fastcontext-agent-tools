@@ -305,11 +305,16 @@ Localized guides: [Traditional Chinese](docs/mcp.zh-TW.md), [Japanese](docs/mcp.
 
 ## MCP tools
 
-`fastcontext_health` checks that the bundled `fastcontext.cli` is importable and
-the endpoint environment is set. It reports the configured values (`BASE_URL`,
-`MODEL`, allowed roots, and the tuning vars), with `API_KEY` masked, plus an
-`effective` block showing what actually takes effect once defaults are applied
-(so you can see, for example, that `FC_TEMPERATURE` is falling back to 0.7).
+`fastcontext_health` checks that the bundled `fastcontext.cli` is importable, the
+endpoint environment is set, and — by default — **live-probes the model** with a
+1-token completion so `ok` is true only if `MODEL`@`BASE_URL` actually responds.
+This catches the cases a config-only check misses: a wrong `MODEL`
+(`status: model_not_found`), a down or wrong endpoint (`unreachable`), or a model
+still loading (`timeout`). It also reports the configured values (`BASE_URL`,
+`MODEL`, allowed roots, tuning vars), with `API_KEY` masked, plus an `effective`
+block showing what takes effect once defaults are applied. Pass `probe: false`
+for a config-only check with no network call, or set `FASTCONTEXT_HEALTH_TIMEOUT`
+(seconds) to tune the probe.
 
 `fastcontext_explore` runs FastContext against a repository and returns parsed
 citations plus the raw output:

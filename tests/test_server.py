@@ -169,10 +169,46 @@ class ServerTests(unittest.TestCase):
             clear=True,
         ):
             with mock.patch.object(runtime, "_fastcontext_available", return_value=True):
-                payload = health()
+                payload = health(probe=False)
 
         self.assertTrue(payload["ok"])
+        self.assertTrue(payload["config_ok"])
+        self.assertIsNone(payload["endpoint"])
         self.assertEqual(payload["fastcontext_module"], "fastcontext_mcp.fastcontext_cli")
+
+    def test_health_probe_failure_makes_ok_false(self) -> None:
+        # config is fine, but the endpoint probe fails -> ok must be False
+        with mock.patch.dict(
+            os.environ,
+            {"BASE_URL": "https://example.test/v1", "MODEL": "fastcontext"},
+            clear=True,
+        ):
+            with mock.patch.object(runtime, "_fastcontext_available", return_value=True):
+                with mock.patch.object(
+                    runtime, "_probe_endpoint",
+                    return_value={"ok": False, "status": "model_not_found"},
+                ):
+                    payload = health(probe=True)
+
+        self.assertTrue(payload["config_ok"])
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["endpoint"]["status"], "model_not_found")
+
+    def test_health_probe_success(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {"BASE_URL": "https://example.test/v1", "MODEL": "fastcontext"},
+            clear=True,
+        ):
+            with mock.patch.object(runtime, "_fastcontext_available", return_value=True):
+                with mock.patch.object(
+                    runtime, "_probe_endpoint",
+                    return_value={"ok": True, "status": "ok", "latency_ms": 12},
+                ):
+                    payload = health(probe=True)
+
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["endpoint"]["status"], "ok")
 
     def test_run_fastcontext_uses_current_python_module(self) -> None:
         completed = CompletedProcess(

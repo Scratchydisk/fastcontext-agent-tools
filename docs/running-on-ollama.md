@@ -51,6 +51,10 @@ ollama show hf.co/mitkox/FastContext-1.0-4B-RL-Q4_K_M-GGUF:latest --modelfile > 
 # set the context window (see step 2)
 echo "PARAMETER num_ctx 16384" >> fc.mf
 
+# bake the recommended temperature so it's safe even without FC_TEMPERATURE in
+# the env. The GGUF defaults to 0.6; FastContext locates better at 0.2.
+echo "PARAMETER temperature 0.2" >> fc.mf
+
 ollama create fc-q4-nothink-16k -f fc.mf
 ```
 

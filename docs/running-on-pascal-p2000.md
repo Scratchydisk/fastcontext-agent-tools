@@ -61,7 +61,8 @@ OLLAMA_HOST=127.0.0.1:11435 ollama show hf.co/mitkox/FastContext-1.0-4B-RL-Q4_K_
 #     <|im_start|>assistant\n<think>\n
 # to prefill an empty think block:
 #     <|im_start|>assistant\n<think>\n\n</think>\n\n
-echo "PARAMETER num_ctx 8192" >> fc.mf      # see "context" below
+echo "PARAMETER num_ctx 8192" >> fc.mf       # see "context" below
+echo "PARAMETER temperature 0.2" >> fc.mf    # GGUF defaults to 0.6; 0.2 locates better
 OLLAMA_HOST=127.0.0.1:11435 ollama create fastcontext-nothink -f fc.mf
 ```
 

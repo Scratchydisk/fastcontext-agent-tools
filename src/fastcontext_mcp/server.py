@@ -31,10 +31,15 @@ def tools() -> list[dict[str, Any]]:
     return [
         {
             "name": "fastcontext_health",
-            "description": "Check whether bundled FastContext and required endpoint environment variables are configured.",
+            "description": "Check FastContext config and live-probe the model endpoint (a 1-token round-trip; 'ok' is true only if it responds). Reports configured/effective env values, API_KEY masked.",
             "inputSchema": {
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "probe": {
+                        "type": "boolean",
+                        "description": "Live-probe MODEL@BASE_URL with a 1-token completion (default true). Set false for a config-only check with no network call.",
+                    },
+                },
                 "additionalProperties": False,
             },
         },
@@ -109,7 +114,7 @@ def tools() -> list[dict[str, Any]]:
 def call_tool(name: str, arguments: dict[str, Any] | None) -> dict[str, Any]:
     arguments = arguments or {}
     if name == "fastcontext_health":
-        return json_text_result(health())
+        return json_text_result(health(probe=arguments.get("probe", True)))
     if name == "fastcontext_explore":
         return json_text_result(run_fastcontext(arguments))
     if name == "fastcontext_explore_with_trace":

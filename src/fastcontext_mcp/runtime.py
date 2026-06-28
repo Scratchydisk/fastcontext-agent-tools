@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -144,6 +148,59 @@ def _effective_retries() -> int:
         return 2
 
 
+def _probe_endpoint(timeout: float) -> dict[str, Any]:
+    """Fire a 1-token completion to confirm the endpoint actually serves MODEL.
+
+    Config-only checks report ok while the endpoint 404s (wrong MODEL), is down,
+    or has the wrong BASE_URL. This catches those by round-tripping a real call.
+    """
+    base = os.getenv("BASE_URL")
+    model = os.getenv("MODEL")
+    if not (base and model):
+        return {"ok": False, "status": "unconfigured",
+                "detail": "BASE_URL and MODEL must be set to probe."}
+    url = base.rstrip("/") + "/chat/completions"
+    body = json.dumps({
+        "model": model,
+        "messages": [{"role": "user", "content": "ping"}],
+        "max_tokens": 1,
+        "stream": False,
+    }).encode()
+    headers = {"Content-Type": "application/json"}
+    key = os.getenv("API_KEY")
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    started = time.monotonic()
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            resp.read()
+        return {"ok": True, "status": "ok",
+                "latency_ms": int((time.monotonic() - started) * 1000)}
+    except urllib.error.HTTPError as exc:
+        snippet = ""
+        try:
+            snippet = exc.read().decode("utf-8", "replace")[:200]
+        except Exception:  # noqa: BLE001
+            pass
+        if exc.code == 404:
+            status = "model_not_found"
+        elif exc.code in (401, 403):
+            status = "auth_error"
+        else:
+            status = f"http_{exc.code}"
+        return {"ok": False, "status": status, "http_code": exc.code,
+                "detail": snippet or str(exc)}
+    except (TimeoutError, OSError) as exc:
+        is_timeout = isinstance(exc, TimeoutError) or "timed out" in str(exc).lower()
+        return {
+            "ok": False,
+            "status": "timeout" if is_timeout else "unreachable",
+            "detail": (f"No response within {timeout:g}s — the model may be loading; "
+                       "retry shortly." if is_timeout else str(exc)),
+        }
+
+
 def _fastcontext_available() -> bool:
     try:
         return importlib.util.find_spec(FASTCONTEXT_MODULE) is not None
@@ -196,10 +253,26 @@ def build_fastcontext_prompt(repo: Path, query: str) -> str:
     )
 
 
-def health() -> dict[str, Any]:
+def health(probe: bool = True) -> dict[str, Any]:
     available = _fastcontext_available()
+    config_ok = bool(available and _env_present("BASE_URL") and _env_present("MODEL"))
+
+    endpoint: dict[str, Any] | None = None
+    if probe and config_ok:
+        try:
+            timeout = float(os.getenv("FASTCONTEXT_HEALTH_TIMEOUT", "20"))
+        except ValueError:
+            timeout = 20.0
+        endpoint = _probe_endpoint(timeout)
+
+    # ok requires a real round-trip when probing — config-only checks pass even
+    # when the endpoint 404s or is down, which is the false-confidence trap.
+    ok = config_ok if endpoint is None else bool(config_ok and endpoint["ok"])
+
     return {
-        "ok": bool(available and _env_present("BASE_URL") and _env_present("MODEL")),
+        "ok": ok,
+        "config_ok": config_ok,
+        "endpoint": endpoint,
         "fastcontext_module": FASTCONTEXT_MODULE if available else None,
         "fastcontext_command": [sys.executable, "-m", FASTCONTEXT_MODULE],
         "env": {
@@ -226,6 +299,10 @@ def health() -> dict[str, Any]:
             "Recommended: FC_TEMPERATURE=0.2 and FASTCONTEXT_REROOT_PATHS=1. "
             "Unset tuning vars fall back to FastContext's own defaults (temp 0.7, "
             "no re-rooting), which are less accurate for code location.",
+            "'endpoint' is a live 1-token probe of MODEL@BASE_URL; 'ok' requires it "
+            "to round-trip. status 'model_not_found' means the endpoint is up but "
+            "MODEL is wrong; 'timeout' often means the model is still loading. "
+            "Pass probe=false (or FASTCONTEXT_HEALTH_TIMEOUT) to skip/tune it.",
         ],
     }
 
