@@ -161,23 +161,39 @@ verifying.
   Q4_K_M GGUF (fp16 KV cache — see exp. 7) is a strong, simple option. Avoid Q6
   (slower, no accuracy gain) and the Pascal/P2000 path (slow and weak).
 
-### 7. Ollama KV-cache quantisation (`OLLAMA_KV_CACHE_TYPE`) — do not use
+### 7. Ollama KV-cache quantisation (`OLLAMA_KV_CACHE_TYPE`) — avoid it
 
 - **Question:** Ollama/llama.cpp can quantise the KV cache (`q8_0`, `q4_0`) to
   save VRAM. Is `q4_0` KV a free memory win, or does it cost accuracy?
-- **Method:** the same Q4_K_M GGUF on the same 12 GB 3060, fp16 KV vs `q4_0` KV
-  (the latter set on the box's ollama service via `OLLAMA_KV_CACHE_TYPE=q4_0`
-  with `OLLAMA_FLASH_ATTENTION=1`). `BENCH_ITERS=3`.
-- **Result:** **fp16 KV 15/15 (100%) → `q4_0` KV 0/15 (0%).** Not a gentle
-  degradation — it **breaks the agentic loop entirely**: the model stops emitting
-  `tool_calls`, answers from nothing in prose, and leaves `<final_answer>` empty,
-  so nothing parses. Confirmed it was the KV quant (not the model or GGUF) by
-  reproducing 0 tool calls under `q4_0` and recovering them on an fp16-KV instance
-  of the identical model.
-- **Decision:** **never quantise the KV cache for this workload.** The ~2 GB it
-  saves (7.5 GB → 5.4 GB resident at ctx 16384) is not worth a 100→0 collapse.
-  Aggressive KV quant is not "overkill" here — it is destructive. (Flash attention
-  on its own, `OLLAMA_FLASH_ATTENTION=1` with fp16 KV, is fine.)
+- **First (flawed) observation:** on the 12 GB 3060, whose ollama service ran
+  `OLLAMA_KV_CACHE_TYPE=q4_0` **and** `OLLAMA_FLASH_ATTENTION=1` **and**
+  `OLLAMA_NUM_PARALLEL=2`, FastContext returned **0/15**, vs 15/15 after removing
+  those. That looked like "KV quant breaks tool-calling entirely" — but the
+  comparison changed three env vars at once and was a single box on Ollama 0.30.6.
+  **It was an overclaim.** A canary was run to isolate the variable.
+- **Canary (clean single-variable):** RTX 5090, Ollama 0.30.11, same Q4_K_M GGUF,
+  flash attention **on in every arm**, only the named variable changed,
+  `BENCH_ITERS=3`:
+
+  | Arm | KV cache | `NUM_PARALLEL` | File-hit |
+  |---|---|---|---|
+  | A | fp16 | 1 | 11/15 |
+  | B | q4_0 | 1 | 6/15 |
+  | C | q4_0 | 2 | 4/15 |
+
+- **Result:** `q4_0` KV **degrades** agentic accuracy substantially — roughly
+  halves the hit rate at parallel=1 (11→6) and is worse at parallel=2 (→4), with
+  tool-call activity dropping sharply at each step (e.g. ~14–104 calls/query at
+  fp16 vs ~3–31 at q4_0). It does **not**, on a modern Ollama, cause a total
+  collapse on its own. The 3060's 0/15 was the extreme end of this gradient
+  (q4_0 + parallel=2 + the older 0.30.6), not a clean "KV quant = 0" law. The
+  single-run-per-arm numbers carry the usual 5-query noise, but the direction and
+  the tool-call drop are consistent and corroborated.
+- **Decision:** **don't quantise the KV cache for this workload.** It badly hurts
+  agentic tool-use and worsens with parallel slots; the ~2 GB it saves is not
+  worth it. Flash attention on its own (`OLLAMA_FLASH_ATTENTION=1`, fp16 KV) is
+  fine. (Lesson logged: the original claim was confounded; a single-variable
+  canary on independent hardware corrected it.)
 
 ### 8. Context window vs VRAM headroom on a 24 GB card
 

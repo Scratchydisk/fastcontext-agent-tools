@@ -101,11 +101,13 @@ figures above), so account for it.
 ## 3. Do not quantise the KV cache
 
 Ollama can quantise the KV cache (`OLLAMA_KV_CACHE_TYPE=q8_0` or `q4_0`) to save
-memory. **Do not use `q4_0` for this workload.** A 4-bit KV cache degrades
-attention enough that the model stops emitting tool calls entirely: it answers
-from nothing in prose and leaves `<final_answer>` empty. On a 12 GB 3060 the same
-model and context went from 15/15 with an fp16 KV cache to 0/15 with `q4_0`. The
-~2 GB it saves is not worth a total failure. Leave the KV cache at fp16.
+memory. **Don't use `q4_0` for this workload.** A 4-bit KV cache weakens attention
+enough to cut tool-calling sharply and substantially degrade accuracy. In a clean
+single-variable test (5090, same model, flash attention on in both arms) the hit
+rate roughly halved — 11/15 at fp16 vs 6/15 at `q4_0` — and dropped further to
+4/15 with `OLLAMA_NUM_PARALLEL=2`, which doubles the (quantised) KV cache. In the
+worst case (q4_0 + parallel slots + an older Ollama) it collapsed to zero. The
+~2 GB it saves is not worth it. Leave the KV cache at fp16.
 
 Flash attention on its own (`OLLAMA_FLASH_ATTENTION=1`, fp16 KV) is fine and
 slightly faster.

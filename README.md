@@ -242,8 +242,9 @@ shaped the recommended setup:
   is not second-class.
 - A 6-bit quant was worse than 4-bit on every card and slower. 4-bit is the
   sweet spot.
-- `OLLAMA_KV_CACHE_TYPE=q4_0` breaks the tool-calling loop entirely (15/15 to
-  0/15 on the same card). Leave the KV cache at fp16.
+- `OLLAMA_KV_CACHE_TYPE=q4_0` substantially degrades agentic accuracy (roughly
+  halved in a clean single-variable test, worse with parallel slots) and sharply
+  cuts tool-calling. Leave the KV cache at fp16.
 - A Pascal card (compute < 7.0) runs the model under Ollama but is slow and much
   less accurate; use a card that supports vLLM for real work.
 
