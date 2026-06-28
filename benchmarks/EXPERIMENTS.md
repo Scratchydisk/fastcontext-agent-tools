@@ -126,6 +126,7 @@ verifying.
   | `8gb-a2000-ollama-q4` | A2000 8 GB | Q4_K_M | 14/15 (93%) |
   | `8gb-a2000-ollama-q6` | A2000 8 GB | Q6_K | 9/15 (60%, 1 timeout) |
   | `12gb-3060-ollama-q4` | RTX 3060 12 GB | Q4_K_M | **15/15 (100%)** |
+  | `24gb-5090-ollama-q4` | RTX 5090 24 GB | Q4_K_M | 14/15 (93%) |
 
   **P2000 5 GB (Ollama GGUF — vLLM can't run on Pascal), quant × context:**
 
@@ -138,9 +139,10 @@ verifying.
 
 - **Findings:**
   - **Ollama Q4 GGUF matches or beats vLLM on a capable card.** Q4_K_M scored
-    14/15 on the 8 GB A2000 and 15/15 on the 12 GB 3060 — at or above the vLLM
-    numbers on the same cards (11/15 and 13/15). So the GGUF path is not a
-    second-class option on a card that *can* run vLLM; it's competitive.
+    14/15 (A2000 8 GB), 15/15 (3060 12 GB), and 14/15 (5090 24 GB) — at or above
+    the vLLM numbers on the same cards (11/15 and 13/15). So the GGUF path is not
+    a second-class option on a card that *can* run vLLM; it's competitive across
+    8–24 GB.
   - **The P2000's poor score was the card, not the GGUF.** The exact same Q4_K_M
     GGUF that scored 5/10 on the Pascal P2000 scored 14–15/15 on Ampere cards.
     Pascal's weakness (no flash-attn, slow, timeouts) is the limiter.
@@ -176,6 +178,36 @@ verifying.
   saves (7.5 GB → 5.4 GB resident at ctx 16384) is not worth a 100→0 collapse.
   Aggressive KV quant is not "overkill" here — it is destructive. (Flash attention
   on its own, `OLLAMA_FLASH_ATTENTION=1` with fp16 KV, is fine.)
+
+### 8. Context window vs VRAM headroom on a 24 GB card
+
+- **Question:** on a big card, can the model stay resident while leaving room for
+  other work, and how far can the context be pushed before it stops fitting?
+- **Method:** RTX 5090 24 GB, Ollama 0.30.11, `fc-q4-nothink` GGUF (fp16 KV,
+  `OLLAMA_NUM_PARALLEL=1`). Loaded at increasing `num_ctx` and measured resident
+  VRAM and GPU/CPU placement.
+- **Result:**
+
+  | `num_ctx` | Resident | Placement | Free of 24 GB |
+  |---|---|---|---|
+  | 16384 | 5.1 GB | 100% GPU | ~19 GB |
+  | 32768 | 7.5 GB | 100% GPU | ~17 GB |
+  | 65536 | 12 GB | 100% GPU | ~12 GB |
+  | 131072 | 22 GB | 100% GPU | ~2.5 GB |
+  | 262144 (max) | 43 GB needed | 45/55 CPU split | does not fit |
+
+  KV cache costs ~150 KB/token (weights are a fixed ~2.5 GB). 131072 is the
+  practical on-GPU ceiling on 24 GB; the model's full 262144 needs 43 GB and
+  spills to CPU.
+- **Accuracy at a large context:** `24gb-5090-ollama-q4-ctx64k` scored 12/15 vs
+  14/15 at ctx 16384 — within sampling noise (the q2/q3 swing), i.e. no
+  improvement and no clear penalty. Expected: this five-query repo fits in 16k,
+  so extra context has nothing to do. Large contexts matter for exploring large
+  repositories, not for accuracy on a small one.
+- **Decision:** on a 24 GB card, ctx 65536 keeps the model resident (~12 GB) with
+  ~12 GB free for other workloads; ctx 16384 leaves ~19 GB free. Pick the context
+  to match the repos you explore, not to chase accuracy. `OLLAMA_NUM_PARALLEL>1`
+  multiplies the KV cache, so account for it in the footprint.
 
 ## Config decisions so far
 

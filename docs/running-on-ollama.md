@@ -75,15 +75,24 @@ is ~4000, leaving no room for the agent's prompt as it reads files. Raise it in
 the Modelfile. The KV cache grows roughly linearly with `num_ctx`, so this is the
 main lever on resident memory:
 
-| `num_ctx` | Approx. resident (Q4_K_M, fp16 KV) |
-|---|---|
-| 8192 | ~5.5 GB |
-| 16384 | ~7.5 GB |
-| 32768 | ~11 GB |
+Measured resident VRAM (Q4_K_M, fp16 KV, `OLLAMA_NUM_PARALLEL=1`; weights are a
+fixed ~2.5 GB, the rest is KV cache at ~150 KB/token):
+
+| `num_ctx` | Resident | Free on a 24 GB card |
+|---|---|---|
+| 8192 | ~3.8 GB | — |
+| 16384 | ~5.1 GB | ~19 GB |
+| 32768 | ~7.5 GB | ~17 GB |
+| 65536 | ~12 GB | ~12 GB |
+| 131072 | ~22 GB | ~2.5 GB |
+| 262144 (model max) | ~43 GB | does not fit → spills to CPU |
 
 16384 is a good default and matches the context used in the benchmarks. On a
-small card drop to 8192; on a 24 GB card you can raise it and still leave plenty
-free for other workloads.
+small card drop to 8192. On a 24 GB card, 65536 keeps the model fully on the GPU
+(~12 GB) while leaving ~12 GB free for other workloads; 131072 is the practical
+on-GPU ceiling, and the full 262144 needs ~43 GB and spills to CPU. Note
+`OLLAMA_NUM_PARALLEL` multiplies the KV cache (2 parallel slots ≈ double the KV
+figures above), so account for it.
 
 ## 3. Do not quantise the KV cache
 
