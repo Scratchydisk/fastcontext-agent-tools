@@ -34,21 +34,28 @@ def traj_tool_calls(tp: str | None) -> int:
 
 def main() -> None:
     iters = int(os.getenv("BENCH_ITERS", "1"))
-    rows, hits, attempts = [], 0, 0
+    rows, hits, attempts, timeouts = [], 0, 0, 0
     for query, truth, _terms in CASES:
-        case_hits, calls_sum, files_seen = 0, 0, set()
+        case_hits, calls_sum, files_seen, case_timeouts = 0, 0, set(), 0
         for _ in range(iters):
-            res = explore(TARGET_REPO, query)
+            try:
+                res = explore(TARGET_REPO, query)
+            except Exception as exc:  # noqa: BLE001 — a timeout/error is a miss, keep going
+                print(f"  query failed (counted as miss): {exc}")
+                res = {}
+                case_timeouts += 1
+                timeouts += 1
             files = {os.path.basename(c["path"]) for c in (res.get("citations") or [])}
             files_seen |= files
             case_hits += any(f in truth for f in files)
             calls_sum += traj_tool_calls(res.get("trajectory_path"))
             attempts += 1
         hits += case_hits
+        files_label = sorted(files_seen) or (["(timeout)"] if case_timeouts == iters else ["(none)"])
         rows.append(
             {
                 "hit": f"{case_hits}/{iters}" if iters > 1 else ("YES" if case_hits else "no"),
-                "files": sorted(files_seen) or ["(none)"],
+                "files": files_label,
                 "avg_calls": round(calls_sum / iters, 1),
             }
         )
@@ -61,7 +68,8 @@ def main() -> None:
         "",
         *config_lines(),
         "",
-        f"**File-hit rate: {hits}/{attempts}**",
+        f"**File-hit rate: {hits}/{attempts}**"
+        + (f" ({timeouts} attempt(s) timed out, counted as misses)" if timeouts else ""),
         "",
         "| # | hits | files cited (any iter) | avg tool calls |",
         "|---|------|------------------------|----------------|",

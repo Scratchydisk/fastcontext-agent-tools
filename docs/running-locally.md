@@ -75,6 +75,14 @@ export HF_TOKEN=hf_...                 # or set it in scripts/env.local.sh
   supports up to 262144. That default assumes a ~24 GB card — on smaller cards
   vLLM will refuse to start ("estimated maximum model length is N"). See
   [Context length by VRAM](#context-length-by-vram) for what fits.
+- **Ollama is a viable alternative on a capable card — but never quantise its
+  KV cache.** A Q4_K_M GGUF served by Ollama scored 14–15/15 on Ampere cards
+  (at/above vLLM on the same hardware). However, `OLLAMA_KV_CACHE_TYPE=q4_0`
+  **breaks FastContext entirely** (0/15): a 4-bit KV cache degrades attention
+  enough that the model stops emitting tool calls and returns empty answers.
+  Leave the KV cache at fp16. (`OLLAMA_FLASH_ATTENTION=1` on its own is fine.)
+  Ollama also needs a no-think Modelfile for this reasoning model — see
+  [running-on-pascal-p2000.md](running-on-pascal-p2000.md) for the recipe.
 - **ripgrep is required.** The `GREP`/`GLOB` tools shell out to `rg`. If it's
   not on `PATH`, searches fail with "No such file or directory: 'rg'", the agent
   reads nothing, and `explore` returns no/garbage citations. Install it

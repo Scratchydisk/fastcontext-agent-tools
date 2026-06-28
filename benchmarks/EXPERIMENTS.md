@@ -107,8 +107,9 @@ verifying.
   quant level, and context length?
 - **Method:** same five queries, temperature 0.2, re-rooting on. vLLM configs:
   raw single-pass, `BENCH_ITERS=3` (15 attempts). Ollama configs: retry-on-empty,
-  `BENCH_ITERS=2` (10 attempts). One endpoint per config; results in
-  `results/<label>/`.
+  `BENCH_ITERS=3` (15 attempts) on the capable cards, `BENCH_ITERS=2` (10) on the
+  much slower P2000. Ollama runs use a no-think GGUF at `num_ctx 16384`
+  (8192 on the P2000). One endpoint per config; results in `results/<label>/`.
 
   **Cross-GPU (vLLM):**
 
@@ -117,6 +118,14 @@ verifying.
   | `8gb-a2000-quant` | A2000 8 GB | 4-bit bitsandbytes | 11/15 (73%) |
   | `12gb-3060-full` | RTX 3060 12 GB | full BF16 | 13/15 (87%) |
   | `24gb-full` | 24 GB | full BF16, ctx 65536 | 11/15 (73%) |
+
+  **Ollama (GGUF, fp16 KV cache) on the capable cards:**
+
+  | Config | GPU | Quant | File-hit |
+  |---|---|---|---|
+  | `8gb-a2000-ollama-q4` | A2000 8 GB | Q4_K_M | 14/15 (93%) |
+  | `8gb-a2000-ollama-q6` | A2000 8 GB | Q6_K | 9/15 (60%, 1 timeout) |
+  | `12gb-3060-ollama-q4` | RTX 3060 12 GB | Q4_K_M | **15/15 (100%)** |
 
   **P2000 5 GB (Ollama GGUF — vLLM can't run on Pascal), quant × context:**
 
@@ -128,23 +137,45 @@ verifying.
   Context reduction was >10x for every config (exact multiple noisy).
 
 - **Findings:**
-  - **The cross-GPU configs are within sampling noise** — 24 GB full scored the
-    *same* 11/15 as 8 GB 4-bit, so there's no measurable precision penalty here.
-    The 11–13 spread is mostly q3 ("parse citations") swinging 0–2/3.
-  - **Higher quant did not help.** On the P2000, Q6_K (30%) did not beat Q4_K_M
-    (50%) — if anything worse, and with fewer tool calls. The limiter on small
-    models is agentic tool-use competence, not quant precision.
+  - **Ollama Q4 GGUF matches or beats vLLM on a capable card.** Q4_K_M scored
+    14/15 on the 8 GB A2000 and 15/15 on the 12 GB 3060 — at or above the vLLM
+    numbers on the same cards (11/15 and 13/15). So the GGUF path is not a
+    second-class option on a card that *can* run vLLM; it's competitive.
+  - **The P2000's poor score was the card, not the GGUF.** The exact same Q4_K_M
+    GGUF that scored 5/10 on the Pascal P2000 scored 14–15/15 on Ampere cards.
+    Pascal's weakness (no flash-attn, slow, timeouts) is the limiter.
+  - **Higher quant did not help — it hurt.** Q6_K was worse than Q4_K_M on every
+    card (P2000 3/10 vs 5/10; A2000 9/15 vs 14/15) *and* slower (the A2000 Q6 run
+    timed out on the heavy query). Q4_K_M is the sweet spot; the limiter is the
+    small model's agentic competence, not quant precision.
+  - **The cross-GPU vLLM configs are within sampling noise** — 24 GB full scored
+    the *same* 11/15 as 8 GB 4-bit. The 11–13 spread is mostly q3 swinging.
   - **More context hurt on the weak card.** 16384 on the P2000 timed out per
-    query; 8192 is its practical ceiling. (`num_ctx` raised via Modelfile.)
+    query; 8192 is its practical ceiling. On the Ampere cards 16384 was fine.
   - The P2000 needs Ollama + a community GGUF + a custom no-think Modelfile, and
     is much slower. Full write-up: [docs/running-on-pascal-p2000.md](../docs/running-on-pascal-p2000.md).
-  - _8 GB three-way (vLLM-4bit vs Ollama-Q4 vs Ollama-Q6) — pending GGUF
-    downloads; to be added._
 
-- **Decision:** no accuracy ranking survives the noise of this 5-query set; a
-  real comparison needs far more iterations/queries. Practically: use a
-  vLLM-capable card (≥ compute 7.0, ≥ 8 GB); the P2000/Ollama path runs but is
-  slow and weak.
+- **Decision:** for a card that can run vLLM, either engine works; Ollama with a
+  Q4_K_M GGUF (fp16 KV cache — see exp. 7) is a strong, simple option. Avoid Q6
+  (slower, no accuracy gain) and the Pascal/P2000 path (slow and weak).
+
+### 7. Ollama KV-cache quantisation (`OLLAMA_KV_CACHE_TYPE`) — do not use
+
+- **Question:** Ollama/llama.cpp can quantise the KV cache (`q8_0`, `q4_0`) to
+  save VRAM. Is `q4_0` KV a free memory win, or does it cost accuracy?
+- **Method:** the same Q4_K_M GGUF on the same 12 GB 3060, fp16 KV vs `q4_0` KV
+  (the latter set on the box's ollama service via `OLLAMA_KV_CACHE_TYPE=q4_0`
+  with `OLLAMA_FLASH_ATTENTION=1`). `BENCH_ITERS=3`.
+- **Result:** **fp16 KV 15/15 (100%) → `q4_0` KV 0/15 (0%).** Not a gentle
+  degradation — it **breaks the agentic loop entirely**: the model stops emitting
+  `tool_calls`, answers from nothing in prose, and leaves `<final_answer>` empty,
+  so nothing parses. Confirmed it was the KV quant (not the model or GGUF) by
+  reproducing 0 tool calls under `q4_0` and recovering them on an fp16-KV instance
+  of the identical model.
+- **Decision:** **never quantise the KV cache for this workload.** The ~2 GB it
+  saves (7.5 GB → 5.4 GB resident at ctx 16384) is not worth a 100→0 collapse.
+  Aggressive KV quant is not "overkill" here — it is destructive. (Flash attention
+  on its own, `OLLAMA_FLASH_ATTENTION=1` with fp16 KV, is fine.)
 
 ## Config decisions so far
 
