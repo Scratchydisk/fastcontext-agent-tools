@@ -71,19 +71,35 @@ verifying.
   were n=3 noise.
 - **Decision:** **reverted.** No unproven prompt text shipped.
 
-### 5. Self-consistency / cascade voting — in progress
+### 5. Self-consistency / cascade voting — adopted (retry-on-empty)
 
 - **Question:** misses are variance, so repeating and combining runs should help.
   Should that apply to every query, or only where a cheap signal predicts a query
   is uncertain? Voting on already-reliable queries is wasted cost.
-- **Method:** collect K independent attempts per query recording hit and the
-  confidence signals (empty, warnings, max-turns, tool calls), then (a) check
-  whether misses carry a detectable weak signal, and (b) Monte-Carlo simulate
-  strategies — single, retry-on-empty, retry-on-weak, a gated cascade
-  (escalate to union only when the first run looks weak), blanket union, blanket
-  agreement — scoring both hit rate and average model-runs (cost).
-- **Result:** _pending — collection running._
-- **Decision:** _pending._
+- **Method:** collected 6 independent attempts per query (30 total) recording hit
+  and confidence signals (empty, warnings, max-turns, tool calls), then (a)
+  checked whether misses carry a detectable signal, and (b) Monte-Carlo simulated
+  strategies, scoring hit rate and average model-runs (cost).
+- **Result — gate:** all **7/7 misses were empty** results (zero warnings,
+  zero max-turns, zero confidently-wrong), and **0/23 hits** were false-flagged.
+  So "no citations" perfectly predicts a miss on this set, with no wasted retries.
+- **Result — strategies** (equal weight per query):
+
+  | Strategy | Hit rate | Avg runs |
+  |---|---|---|
+  | single (baseline) | 76.7% | 1.0 |
+  | **retry-on-empty (≤3)** | **88.2%** | **1.38** |
+  | gate → union cascade | 88.1% | 1.47 |
+  | blanket union of 3 | 88.4% | 3.0 |
+  | blanket agreement ≥2/3 | 78.5% | 3.0 |
+
+  Retry-on-empty matches blanket union's accuracy (+11.5 pts) at less than half
+  the cost, and is 1.0x on queries that answer first time. Blanket agreement is
+  *worse* — it filters out the rare correct citation on the flaky query.
+- **Decision:** adopt **retry-on-empty**, `FASTCONTEXT_EXPLORE_RETRIES=2`
+  (up to 3 attempts; only re-runs an explore that returned no citations; set 0 to
+  disable). Implemented in `runtime.run_fastcontext`. Blanket voting rejected as
+  not worth the cost; this confirms the adaptive approach over a uniform one.
 
 ## Config decisions so far
 
@@ -92,6 +108,7 @@ verifying.
 | `FASTCONTEXT_REROOT_PATHS` | `1` | Recovers truncated citation paths (exp. 1). |
 | `FC_TEMPERATURE` | `0.2` | 80% → 93% hit rate, fewer tool calls (exp. 3). |
 | `FC_MAX_TOKENS` | `4000` | Fits prompt+output under a small `CTX_LEN`; final answers are short. |
+| `FASTCONTEXT_EXPLORE_RETRIES` | `2` | Retry-on-empty recovers ~11 pts of hit rate at ~1.4x cost (exp. 5). |
 
 ## Caveats
 

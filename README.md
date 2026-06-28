@@ -107,10 +107,47 @@ Notes:
   for a deterministic locate task; lowering it raised the accuracy benchmark from
   80% to 93% (12/15 to 14/15 over three iterations) and made the search more
   deterministic, with fewer tool calls.
+- `FASTCONTEXT_EXPLORE_RETRIES=2` re-runs an explore that came back with no
+  citations (the dominant failure mode). It recovers most misses at ~1.4x average
+  cost and is free when the first run answers. Set 0 to disable.
 - The first call is slower while `uvx` builds the package, then it is cached.
 
 The plugin assumes the model is already being served somewhere. To self-host it,
 including the 8 GB small-GPU recipe, see [docs/running-locally.md](docs/running-locally.md).
+
+### Make the agent actually reach for it
+
+Installing the plugin makes FastContext *available*, but a coding agent will
+often still default to its own built-in grep/read when locating code, so the
+explorer goes unused. The fix is a directive in your `CLAUDE.md` (global
+`~/.claude/CLAUDE.md`, or a project file) that makes delegation the default and
+explicitly overrides that built-in reflex:
+
+```markdown
+## Code exploration — default to FastContext
+
+RULE: When a task requires locating code, tracing logic across files, finding
+where behaviour is implemented, or mapping what calls/depends on something, your
+FIRST action MUST be the `fastcontext_explore` MCP tool (or the `/fastcontext`
+command) — BEFORE any built-in Grep/Glob/Read sweep. Pass the repo root as
+`repo_path` and a specific behaviour-named `query`. Treat the returned
+file:line citations as candidates: open and verify them before acting.
+
+This is the default for ALL languages. Do NOT fall back to manual grep/read
+chains for multi-file exploration just because they're faster to reach.
+
+Skip FastContext ONLY when:
+- you've already read the exact file(s) in this session, or
+- one known file + one obvious grep fully answers it, or
+- the task is pure generation / non-code with no exploration needed.
+
+If `fastcontext_health` reports the endpoint is down, say so and proceed with
+built-in tools — don't silently skip it.
+```
+
+The narrow skip-list stops it firing on trivial one-file lookups, and the final
+clause turns a down endpoint into a visible message rather than a silent
+fallback that looks identical to the directive being ignored.
 
 ## Install for Codex
 
@@ -125,6 +162,36 @@ Or run the install directly:
 
 ```bash
 git clone https://github.com/Scratchydisk/fastcontext-agent-tools && cd fastcontext-agent-tools && python -m pip install -e . && mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills" && ln -sfn "$(pwd)/skills/fastcontext-explorer" "${CODEX_HOME:-$HOME/.codex}/skills/fastcontext-explorer"
+```
+
+### Make the agent actually reach for it
+
+As with the Claude Code plugin, the `fastcontext-explorer` skill being installed
+doesn't guarantee Codex delegates to it — it will often default to its own
+grep/read when locating code. Reinforce it with the same directive in your
+`AGENTS.md` (the Codex equivalent of `CLAUDE.md`; global at
+`~/.codex/AGENTS.md`, or a per-project file):
+
+```markdown
+## Code exploration — default to FastContext
+
+RULE: When a task requires locating code, tracing logic across files, finding
+where behaviour is implemented, or mapping what calls/depends on something, your
+FIRST action MUST be the `fastcontext_explore` MCP tool (or the
+`fastcontext-explorer` skill) — BEFORE any built-in grep/read sweep. Pass the
+repo root as `repo_path` and a specific behaviour-named `query`. Treat the
+returned file:line citations as candidates: open and verify them before acting.
+
+This is the default for ALL languages. Do NOT fall back to manual grep/read
+chains for multi-file exploration just because they're faster to reach.
+
+Skip FastContext ONLY when:
+- you've already read the exact file(s) in this session, or
+- one known file + one obvious grep fully answers it, or
+- the task is pure generation / non-code with no exploration needed.
+
+If `fastcontext_health` reports the endpoint is down, say so and proceed with
+built-in tools — don't silently skip it.
 ```
 
 ## How it works

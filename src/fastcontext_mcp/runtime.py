@@ -245,34 +245,53 @@ def run_fastcontext(args: dict[str, Any], *, force_trace: bool = False) -> dict[
         traj = Path(tempfile.gettempdir()) / f"fastcontext-mcp-{os.getpid()}.jsonl"
     command.extend(["--traj", str(traj)])
 
-    try:
-        completed = subprocess.run(
-            command,
-            cwd=str(repo),
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=timeout_seconds,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise McpError(
-            -32001,
-            f"fastcontext timed out after {timeout_seconds} seconds",
-            {"stdout": exc.stdout, "stderr": exc.stderr},
-        ) from exc
+    # Retry-on-empty. Misses are sampling variance and almost always show up as
+    # an empty citation list (a benchmark caught 7/7 misses this way, 0 false
+    # alarms). Re-running only when a successful explore returns no citations
+    # recovers most of them at ~1.4x average cost (vs 3x for blanket voting),
+    # and costs nothing on queries that answer first time. Set
+    # FASTCONTEXT_EXPLORE_RETRIES=0 to disable. Only applies in citation mode.
+    retries = 0
+    if citation:
+        try:
+            retries = max(0, int(os.getenv("FASTCONTEXT_EXPLORE_RETRIES", "2")))
+        except ValueError:
+            retries = 2
 
-    output = completed.stdout.strip()
-    citations, citation_warnings = validate_citations(repo, parse_citations(output))
-    result = {
-        "ok": completed.returncode == 0,
-        "returncode": completed.returncode,
-        "repo_path": str(repo),
-        "query": query,
-        "citations": citations,
-        "citation_warnings": citation_warnings,
-        "raw_output": output,
-        "stderr": completed.stderr.strip(),
-        "trajectory_path": str(traj),
-    }
+    result: dict[str, Any] = {}
+    for attempt in range(1, retries + 2):
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=str(repo),
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=timeout_seconds,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise McpError(
+                -32001,
+                f"fastcontext timed out after {timeout_seconds} seconds",
+                {"stdout": exc.stdout, "stderr": exc.stderr},
+            ) from exc
+
+        output = completed.stdout.strip()
+        citations, citation_warnings = validate_citations(repo, parse_citations(output))
+        result = {
+            "ok": completed.returncode == 0,
+            "returncode": completed.returncode,
+            "repo_path": str(repo),
+            "query": query,
+            "citations": citations,
+            "citation_warnings": citation_warnings,
+            "raw_output": output,
+            "stderr": completed.stderr.strip(),
+            "trajectory_path": str(traj),
+            "attempts": attempt,
+        }
+        # Stop on a usable result or a hard failure; retry only empty successes.
+        if citations or completed.returncode != 0:
+            break
     return result

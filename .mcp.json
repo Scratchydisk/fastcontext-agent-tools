@@ -14,6 +14,7 @@
         "FASTCONTEXT_ALLOWED_ROOTS": "/",
         "FC_MAX_TOKENS": "4096",
         "FC_TEMPERATURE": "0.2",
+        "FASTCONTEXT_EXPLORE_RETRIES": "2",
         "FASTCONTEXT_REROOT_PATHS": "1"
       }
     }
