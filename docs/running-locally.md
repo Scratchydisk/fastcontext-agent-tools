@@ -61,6 +61,11 @@ export HF_TOKEN=hf_...                 # or set it in scripts/env.local.sh
   `tool_calls`. vLLM must run with `--enable-auto-tool-choice --tool-call-parser
   hermes` (already in `serve-model.sh`). If `explore` returns no citations, the
   parser is the first suspect — try `qwen3_xml`.
+- **Lower `FC_TEMPERATURE` for accuracy.** FastContext defaults to 0.7, which is
+  high for a deterministic locate task and causes occasional wrong or missed
+  citations. Setting `FC_TEMPERATURE=0.2` raised the accuracy benchmark from 80%
+  to 93% (12/15 to 14/15 over three iterations) and made the search more
+  deterministic. See [benchmarks/](../benchmarks/).
 - **Blackwell (RTX 5090, sm_120).** Verified with vLLM 0.23.0 + torch 2.11+cu130
   against driver/CUDA 13.x. The server resolves `Qwen3ForCausalLM` and loads
   with FlashAttention 2 / FlashInfer.

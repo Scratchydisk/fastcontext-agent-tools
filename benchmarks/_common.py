@@ -14,6 +14,7 @@ os.environ.setdefault("MODEL", "microsoft/FastContext-1.0-4B-RL")
 os.environ.setdefault("API_KEY", "")
 os.environ.setdefault("FASTCONTEXT_ALLOWED_ROOTS", "/")
 os.environ.setdefault("FC_MAX_TOKENS", "4000")
+os.environ.setdefault("FC_TEMPERATURE", "0.2")
 os.environ.setdefault("FASTCONTEXT_REROOT_PATHS", "1")
 
 from fastcontext_mcp.runtime import run_fastcontext  # noqa: E402
@@ -36,5 +37,6 @@ def config_lines() -> list[str]:
         f"- endpoint: `{os.environ['BASE_URL']}`",
         f"- model: `{os.environ['MODEL']}`",
         f"- FC_MAX_TOKENS: `{os.environ['FC_MAX_TOKENS']}`",
+        f"- FC_TEMPERATURE: `{os.environ['FC_TEMPERATURE']}`",
         f"- FASTCONTEXT_REROOT_PATHS: `{os.environ['FASTCONTEXT_REROOT_PATHS']}`",
     ]

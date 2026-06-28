@@ -33,19 +33,23 @@ def traj_tool_calls(tp: str | None) -> int:
 
 
 def main() -> None:
-    rows, hits = [], 0
+    iters = int(os.getenv("BENCH_ITERS", "1"))
+    rows, hits, attempts = [], 0, 0
     for query, truth, _terms in CASES:
-        res = explore(TARGET_REPO, query)
-        files = sorted({os.path.basename(c["path"]) for c in (res.get("citations") or [])})
-        hit = any(f in truth for f in files)
-        hits += hit
+        case_hits, calls_sum, files_seen = 0, 0, set()
+        for _ in range(iters):
+            res = explore(TARGET_REPO, query)
+            files = {os.path.basename(c["path"]) for c in (res.get("citations") or [])}
+            files_seen |= files
+            case_hits += any(f in truth for f in files)
+            calls_sum += traj_tool_calls(res.get("trajectory_path"))
+            attempts += 1
+        hits += case_hits
         rows.append(
             {
-                "query": query,
-                "hit": hit,
-                "files": files or ["(none)"],
-                "warnings": len(res.get("citation_warnings") or []),
-                "tool_calls": traj_tool_calls(res.get("trajectory_path")),
+                "hit": f"{case_hits}/{iters}" if iters > 1 else ("YES" if case_hits else "no"),
+                "files": sorted(files_seen) or ["(none)"],
+                "avg_calls": round(calls_sum / iters, 1),
             }
         )
 
@@ -53,19 +57,17 @@ def main() -> None:
         "# Accuracy benchmark",
         "",
         f"Run: {datetime.date.today().isoformat()}",
+        f"Iterations per query: {iters}",
         "",
         *config_lines(),
         "",
-        f"**File-hit rate: {hits}/{len(CASES)}**",
+        f"**File-hit rate: {hits}/{attempts}**",
         "",
-        "| # | hit | files cited | warnings | tool calls |",
-        "|---|-----|-------------|----------|------------|",
+        "| # | hits | files cited (any iter) | avg tool calls |",
+        "|---|------|------------------------|----------------|",
     ]
     for i, r in enumerate(rows, 1):
-        lines.append(
-            f"| {i} | {'YES' if r['hit'] else 'no'} | {', '.join(r['files'])} "
-            f"| {r['warnings']} | {r['tool_calls']} |"
-        )
+        lines.append(f"| {i} | {r['hit']} | {', '.join(r['files'])} | {r['avg_calls']} |")
     lines += [
         "",
         "A *hit* means a returned citation pointed at an accepted ground-truth "

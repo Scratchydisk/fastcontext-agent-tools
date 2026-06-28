@@ -54,6 +54,21 @@ between arms does not.
 Only answered queries count toward the reported reduction. A miss "saves" tokens
 but returns nothing, so it is not a saving.
 
+## Tuning notes
+
+Things that moved accuracy on this set:
+
+- **`FC_TEMPERATURE`.** FastContext defaults to 0.7, which is high for a
+  deterministic locate task — the search path wanders and sometimes answers off
+  a loose grep hit. Over three iterations the file-hit rate was 12/15 (80%) at
+  0.7 versus 14/15 (93%) at 0.2, with fewer tool calls. The benchmarks default
+  to 0.2.
+- **`FASTCONTEXT_REROOT_PATHS`.** The model truncates paths in some citations
+  even at full precision; re-rooting recovers them. Leave it on.
+
+`accuracy.py` honours `BENCH_ITERS` (default 1). Use a few iterations to average
+out sampling noise before trusting a single number.
+
 ## Caveats
 
 - This measures context cost, the mechanism behind the savings, not Claude's

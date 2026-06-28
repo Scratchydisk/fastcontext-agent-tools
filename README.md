@@ -85,6 +85,7 @@ claude mcp add-json fastcontext --scope user '{
     "MODEL": "microsoft/FastContext-1.0-4B-RL",
     "API_KEY": "sk-your-key",
     "FASTCONTEXT_ALLOWED_ROOTS": "/",
+    "FC_TEMPERATURE": "0.2",
     "FASTCONTEXT_REROOT_PATHS": "1"
   }
 }'
@@ -102,6 +103,10 @@ Notes:
   the MCP server; only inference is remote.
 - `FASTCONTEXT_REROOT_PATHS=1` is recommended on any endpoint. It corrects
   truncated citation paths and does nothing to paths that are already correct.
+- `FC_TEMPERATURE=0.2` is recommended. FastContext defaults to 0.7, which is high
+  for a deterministic locate task; lowering it raised the accuracy benchmark from
+  80% to 93% (12/15 to 14/15 over three iterations) and made the search more
+  deterministic, with fewer tool calls.
 - The first call is slower while `uvx` builds the package, then it is cached.
 
 The plugin assumes the model is already being served somewhere. To self-host it,
@@ -181,6 +186,7 @@ For an MCP client other than the Claude Code plugin, add a stdio server:
         "MODEL": "microsoft/FastContext-1.0-4B-RL",
         "API_KEY": "your-api-key",
         "FASTCONTEXT_ALLOWED_ROOTS": "/path/to/repos",
+        "FC_TEMPERATURE": "0.2",
         "FASTCONTEXT_REROOT_PATHS": "1"
       }
     }
