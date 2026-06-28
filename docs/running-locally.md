@@ -1,7 +1,9 @@
 # Running FastContext-agent-tools locally
 
-How to stand up this MCP server on a workstation with a GPU, unchanged.
-Companion to [fastcontext-vs-context-mode.md](fastcontext-vs-context-mode.md).
+How to stand up this MCP server on a workstation with a GPU, using vLLM to serve
+the model. For the Ollama/GGUF alternative (any card, including ones too old for
+vLLM), see [running-on-ollama.md](running-on-ollama.md). Companion to
+[fastcontext-vs-context-mode.md](fastcontext-vs-context-mode.md).
 
 ## The shape of it
 

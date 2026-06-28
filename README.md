@@ -27,16 +27,23 @@ returns candidate file-line citations for the main agent to verify.
 This is a maintained fork of [`Jakevin/fastcontext-agent-tools`](https://github.com/Jakevin/fastcontext-agent-tools)
 that adds:
 
-- **Local and small-GPU serving.** `scripts/serve-model.sh` runs the model under
-  vLLM, with opt-in flags (`QUANT`, `GPU_MEM_UTIL`, `ENFORCE_EAGER`, `CTX_LEN`)
-  that fit FastContext-4B onto an 8 GB card. The flags are off by default, so
-  larger GPUs behave as upstream does. See [docs/running-locally.md](docs/running-locally.md).
 - **An MCP stdio framing fix.** The server speaks newline-delimited JSON, as the
   MCP spec requires. Upstream used LSP-style `Content-Length` framing, which
-  spec-compliant clients such as Claude Code cannot connect to.
-- **Citation path re-rooting** (`FASTCONTEXT_REROOT_PATHS`). FastContext
-  sometimes truncates the workspace path in its tool arguments and citations;
-  this rewrites those paths back under the repository so the results resolve.
+  spec-compliant clients such as Claude Code cannot connect to. Without this the
+  server does not connect at all.
+- **Two documented serving paths.** vLLM via `scripts/serve-model.sh`, with
+  opt-in flags (`QUANT`, `GPU_MEM_UTIL`, `ENFORCE_EAGER`, `CTX_LEN`) that fit
+  FastContext-4B onto an 8 GB card; and Ollama with a GGUF quant, which on the
+  cards tested matched or beat vLLM for accuracy. See
+  [docs/running-locally.md](docs/running-locally.md) and
+  [docs/running-on-ollama.md](docs/running-on-ollama.md).
+- **Accuracy defaults that measurably help.** Citation path re-rooting
+  (`FASTCONTEXT_REROOT_PATHS`) recovers truncated paths the model emits;
+  `FC_TEMPERATURE=0.2` raised the benchmark from 80% to 93%; and retry-on-empty
+  (`FASTCONTEXT_EXPLORE_RETRIES`) re-runs the one failure mode that responds to
+  a retry. The reasoning behind each is in [benchmarks/EXPERIMENTS.md](benchmarks/EXPERIMENTS.md).
+- **A benchmark harness.** `benchmarks/` measures accuracy and the context-token
+  saving, and carries the results across the GPUs and serving configs tested.
 
 The `microsoft/fastcontext` dependency is pinned at commit
 [`1522d6d`](https://github.com/microsoft/fastcontext/tree/1522d6d6b5e040e817b468e12826662aa069a8b0),
@@ -208,6 +215,31 @@ Sources:
 - Model card: <https://huggingface.co/microsoft/FastContext-1.0-4B-SFT>
 - Paper: <https://arxiv.org/abs/2606.14066>
 
+## Performance
+
+The `benchmarks/` folder measures two things on a small set of "where is X"
+queries with answers known in this repo's own source. The set is five queries,
+so treat the numbers as indicative, not a leaderboard. Full method, per-config
+results, and the tuning history are in [benchmarks/EXPERIMENTS.md](benchmarks/EXPERIMENTS.md).
+
+**Context saving.** Delegating the locate phase keeps the search out of the main
+agent's context. Across the answered queries, about 1.6k tokens entered the main
+context with FastContext versus about 43k doing the same search inline, roughly
+25x less for that phase.
+
+**Accuracy.** With the tuned defaults (`FC_TEMPERATURE=0.2`, re-rooting on,
+retry-on-empty), a Q4 GGUF hit 14–15 of 15 on Ampere cards. A few findings that
+shaped the recommended setup:
+
+- Ollama with a Q4_K_M GGUF matched or beat vLLM on the same card; the GGUF path
+  is not second-class.
+- A 6-bit quant was worse than 4-bit on every card and slower. 4-bit is the
+  sweet spot.
+- `OLLAMA_KV_CACHE_TYPE=q4_0` breaks the tool-calling loop entirely (15/15 to
+  0/15 on the same card). Leave the KV cache at fp16.
+- A Pascal card (compute < 7.0) runs the model under Ollama but is slow and much
+  less accurate; use a card that supports vLLM for real work.
+
 ## Manual install
 
 ```bash
@@ -329,6 +361,31 @@ export HF_TOKEN=hf_...        # avoids an unauthenticated Hugging Face rate-limi
 hermes`, which FastContext requires (it reads server-side `tool_calls`). If
 `explore` returns no citations, try `--tool-call-parser qwen3_xml` instead.
 For VRAM and context-length sizing, see [docs/running-locally.md](docs/running-locally.md).
+
+Prefer Ollama, or have a GPU too old for vLLM? A GGUF quant under Ollama serves
+the same `/v1` endpoint and, on the cards tested, was as accurate as vLLM. The
+setup (no-think Modelfile, context sizing, the KV-cache gotcha) is in
+[docs/running-on-ollama.md](docs/running-on-ollama.md).
+
+## Test it
+
+Once an endpoint is up, this query has a known answer in this repo, so it doubles
+as a smoke test. Run it against a checkout:
+
+```bash
+cd fastcontext-agent-tools
+BASE_URL=http://127.0.0.1:30000/v1 MODEL=<your-model> API_KEY=<your-key> \
+  python -m fastcontext_mcp.fastcontext_cli \
+  --query "Where is the MCP stdio framing read_message/write_message implemented?" \
+  --max-turns 10 --citation
+```
+
+A healthy setup returns a `<final_answer>` citing `src/fastcontext_mcp/server.py`.
+An empty answer means the endpoint is reachable but the model isn't tool-calling
+(on Ollama, the no-think or KV-cache traps in the guide above); a connection
+error points at `BASE_URL` or the tunnel. With the plugin installed, the same
+check from inside Claude Code is `/fastcontext where is the MCP stdio framing
+implemented?`.
 
 ## Hosting the model on a remote server
 
