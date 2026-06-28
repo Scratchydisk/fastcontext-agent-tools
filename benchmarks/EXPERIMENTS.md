@@ -114,16 +114,19 @@ verifying.
   |---|---|---|---|---|
   | `8gb-a2000-quant` | A2000 8 GB | 4-bit (bitsandbytes) | 11/15 (73%) | ~28x / 33x |
   | `12gb-3060-full` | RTX 3060 12 GB | full BF16 | 13/15 (87%) | ~13x / 20x |
-  | `24gb-full` | 24 GB | full BF16 | _pending_ | _pending_ |
+  | `24gb-full` | 24 GB | full BF16 (`CTX_LEN` 65536) | 11/15 (73%) | ~22x / 27x |
 
-  4-bit quantisation costs roughly 14 points of accuracy versus full precision
-  on the same model — the misses (and the path truncation re-rooting fixes) are
-  worse under quant. Context reduction is large in both arms (>10x); the exact
-  multiple is noisy because it depends on how much searching each run's
-  trajectory happened to do, so treat it as order-of-magnitude.
-- **Decision:** prefer full precision when the card allows it; the 8 GB quant
-  path is a usable fallback at a real accuracy cost. 24 GB column pending an
-  endpoint.
+  **The configs are within sampling noise; this benchmark cannot rank them.**
+  The spread (11–13 / 15) is driven almost entirely by q3 ("parse citations"),
+  which swung 0/3 to 2/3 across these runs. Tellingly, full-precision 24 GB
+  scored the *same* 11/15 as 4-bit 8 GB, so the earlier "quant costs ~14 points"
+  read was an artifact of one noisy pair, not a real precision effect. Context
+  reduction was >20x everywhere. A real precision/VRAM ranking would need many
+  more iterations (and more queries), especially on the flaky cases.
+- **Decision:** no precision conclusion from this set. Quant is a usable 8 GB
+  fallback; full precision is preferable on capability grounds (we know quant
+  truncates paths more — exp. 1), but this benchmark didn't measure a hit-rate
+  gap that survives the noise.
 
 ## Config decisions so far
 
