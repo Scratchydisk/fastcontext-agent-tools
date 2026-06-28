@@ -101,6 +101,30 @@ verifying.
   disable). Implemented in `runtime.run_fastcontext`. Blanket voting rejected as
   not worth the cost; this confirms the adaptive approach over a uniform one.
 
+### 6. Hardware / precision sweep — in progress
+
+- **Question:** how do accuracy and context savings change with GPU and
+  precision (4-bit quant on a small card vs full BF16)?
+- **Method:** same five queries, temperature 0.2, re-rooting on, raw single-pass
+  (`FASTCONTEXT_EXPLORE_RETRIES=0`), `BENCH_ITERS=3`. One endpoint per config;
+  results under `results/<label>/`.
+- **Result:**
+
+  | Config | GPU | Precision | File-hit | Context reduction |
+  |---|---|---|---|---|
+  | `8gb-a2000-quant` | A2000 8 GB | 4-bit (bitsandbytes) | 11/15 (73%) | ~28x / 33x |
+  | `12gb-3060-full` | RTX 3060 12 GB | full BF16 | 13/15 (87%) | ~13x / 20x |
+  | `24gb-full` | 24 GB | full BF16 | _pending_ | _pending_ |
+
+  4-bit quantisation costs roughly 14 points of accuracy versus full precision
+  on the same model — the misses (and the path truncation re-rooting fixes) are
+  worse under quant. Context reduction is large in both arms (>10x); the exact
+  multiple is noisy because it depends on how much searching each run's
+  trajectory happened to do, so treat it as order-of-magnitude.
+- **Decision:** prefer full precision when the card allows it; the 8 GB quant
+  path is a usable fallback at a real accuracy cost. 24 GB column pending an
+  endpoint.
+
 ## Config decisions so far
 
 | Setting | Value | Why |

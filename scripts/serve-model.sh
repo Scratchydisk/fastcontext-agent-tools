@@ -22,6 +22,10 @@ MODEL_ID="$MODEL"
 # with CTX_LEN=... if your card has headroom.
 CTX_LEN="${CTX_LEN:-65536}"
 
+# Port to serve on. Override with PORT=... to run a second instance alongside
+# another (e.g. a tunnel already holding 30000).
+PORT="${PORT:-30000}"
+
 # Quantisation. FastContext-4B is ~8GB of BF16 weights, which does NOT fit on an
 # 8GB card (the weights alone OOM before any KV cache is allocated). Set
 # QUANT=bitsandbytes for in-flight 4-bit (~2.5GB weights) so it fits on small
@@ -107,7 +111,7 @@ fi
 
 # Assemble vLLM args; append quantisation only when requested.
 VLLM_ARGS=(
-    --port 30000
+    --port "$PORT"
     --enable-auto-tool-choice
     --tool-call-parser hermes
     --max-model-len "$CTX_LEN"

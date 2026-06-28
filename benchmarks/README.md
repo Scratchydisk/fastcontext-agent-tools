@@ -95,5 +95,10 @@ the resulting defaults.
 
 ## Latest results
 
-- [results/accuracy.md](results/accuracy.md)
-- [results/token_usage.md](results/token_usage.md)
+Per hardware/precision config:
+
+- 8 GB, 4-bit quant: [results/8gb-a2000-quant/](results/8gb-a2000-quant/)
+- 12 GB, full BF16: [results/12gb-3060-full/](results/12gb-3060-full/)
+
+See [EXPERIMENTS.md](EXPERIMENTS.md) (experiment 6) for the cross-config
+comparison.
