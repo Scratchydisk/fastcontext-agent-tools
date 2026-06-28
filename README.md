@@ -369,23 +369,40 @@ setup (no-think Modelfile, context sizing, the KV-cache gotcha) is in
 
 ## Test it
 
-Once an endpoint is up, this query has a known answer in this repo, so it doubles
-as a smoke test. Run it against a checkout:
+Two checks, in order.
+
+**1. Config and connectivity (no model needed).**
 
 ```bash
-cd fastcontext-agent-tools
-BASE_URL=http://127.0.0.1:30000/v1 MODEL=<your-model> API_KEY=<your-key> \
-  python -m fastcontext_mcp.fastcontext_cli \
-  --query "Where is the MCP stdio framing read_message/write_message implemented?" \
-  --max-turns 10 --citation
+fastcontext-mcp --print-health     # or: python -m fastcontext_mcp --print-health
 ```
 
-A healthy setup returns a `<final_answer>` citing `src/fastcontext_mcp/server.py`.
-An empty answer means the endpoint is reachable but the model isn't tool-calling
-(on Ollama, the no-think or KV-cache traps in the guide above); a connection
-error points at `BASE_URL` or the tunnel. With the plugin installed, the same
-check from inside Claude Code is `/fastcontext where is the MCP stdio framing
-implemented?`.
+This confirms the package imports and the endpoint env is set. `No module named
+'fastcontext_mcp'` means you're running a Python where the package isn't
+installed: run `python -m pip install -e .` in that interpreter (or use the
+uvx/plugin launch, which handles it). This is the first thing to check if the
+model never even loads, since a failed import never reaches the endpoint.
+
+**2. Live end-to-end (loads the model).** Ask the agent to locate something with
+a known answer in this repo. With the plugin installed, in Claude Code:
+
+```
+/fastcontext where is the stdio message framing that reads and writes JSON-RPC messages?
+```
+
+A healthy setup cites `src/fastcontext_mcp/server.py`. The first call also pulls
+the model into VRAM (a few seconds on a cold endpoint), so `ollama ps` (or
+`nvidia-smi`) should show it resident afterwards.
+
+Run the live check through the agent (the `/fastcontext` command or the
+`fastcontext_explore` tool), not by calling `fastcontext.cli` directly with a
+bare query. The MCP server wraps each call with a workspace-root prompt, path
+re-rooting, and retry-on-empty; a bare CLI query has none of that and will often
+return an empty answer on a setup that is actually fine. If the agent path
+returns empty, the usual causes are a missing `FC_TEMPERATURE=0.2` /
+`FASTCONTEXT_REROOT_PATHS=1` in the env block (the model truncates workspace
+paths and its tool calls fail), or, on Ollama, the no-think or KV-cache traps in
+the guide above. A connection error points at `BASE_URL` or the tunnel.
 
 ## Hosting the model on a remote server
 

@@ -51,10 +51,19 @@ echo "PARAMETER num_ctx 16384" >> fc.mf
 ollama create fc-q4-nothink-16k -f fc.mf
 ```
 
-Verify the model returns content and makes tool calls before wiring it up. The
-smoke-test query in the [README](../README.md#test-it) is the quickest check; an
-empty `<final_answer>` means the no-think edit didn't take (or the KV-quant trap
-below).
+Before wiring it up, confirm the no-think edit took, i.e. that `content` comes
+back non-empty over the `/v1` endpoint:
+
+```bash
+curl -s http://127.0.0.1:11434/v1/chat/completions \
+  -d '{"model":"fc-q4-nothink-16k:latest","messages":[{"role":"user","content":"Reply with the single word READY"}],"max_tokens":16}' \
+  | python3 -c "import sys,json;print(repr(json.load(sys.stdin)['choices'][0]['message']['content']))"
+```
+
+An empty string back means the think block isn't being prefilled (re-check the
+TEMPLATE edit) or, with tools in play, the KV-cache trap in step 3. Once content
+returns, do the end-to-end check through the agent as described in the
+[README](../README.md#test-it).
 
 ## 2. Context window vs VRAM
 
