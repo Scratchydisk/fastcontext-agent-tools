@@ -137,6 +137,10 @@ Rules of thumb:
 - Prefer lowering `CTX_LEN` over enabling `QUANT` on a 12 GB+ card. 4-bit frees
   memory but degrades quality.
 
+For a GPU too old or small for vLLM (e.g. a Pascal card below compute 7.0), see
+[running-on-pascal-p2000.md](running-on-pascal-p2000.md) for the Ollama/GGUF
+route (it works but is slow and low-accuracy).
+
 ## Registering with Claude Code (after Checkpoint B works)
 
 Point the MCP client at the MCP venv's Python so it imports the right install

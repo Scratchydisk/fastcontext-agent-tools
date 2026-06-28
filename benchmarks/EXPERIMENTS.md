@@ -101,32 +101,50 @@ verifying.
   disable). Implemented in `runtime.run_fastcontext`. Blanket voting rejected as
   not worth the cost; this confirms the adaptive approach over a uniform one.
 
-### 6. Hardware / precision sweep — in progress
+### 6. Hardware / precision / quant / context sweep
 
-- **Question:** how do accuracy and context savings change with GPU and
-  precision (4-bit quant on a small card vs full BF16)?
-- **Method:** same five queries, temperature 0.2, re-rooting on, raw single-pass
-  (`FASTCONTEXT_EXPLORE_RETRIES=0`), `BENCH_ITERS=3`. One endpoint per config;
-  results under `results/<label>/`.
-- **Result:**
+- **Question:** how do accuracy and context savings change with GPU, precision,
+  quant level, and context length?
+- **Method:** same five queries, temperature 0.2, re-rooting on. vLLM configs:
+  raw single-pass, `BENCH_ITERS=3` (15 attempts). Ollama configs: retry-on-empty,
+  `BENCH_ITERS=2` (10 attempts). One endpoint per config; results in
+  `results/<label>/`.
 
-  | Config | GPU | Precision | File-hit | Context reduction |
-  |---|---|---|---|---|
-  | `8gb-a2000-quant` | A2000 8 GB | 4-bit (bitsandbytes) | 11/15 (73%) | ~28x / 33x |
-  | `12gb-3060-full` | RTX 3060 12 GB | full BF16 | 13/15 (87%) | ~13x / 20x |
-  | `24gb-full` | 24 GB | full BF16 (`CTX_LEN` 65536) | 11/15 (73%) | ~22x / 27x |
+  **Cross-GPU (vLLM):**
 
-  **The configs are within sampling noise; this benchmark cannot rank them.**
-  The spread (11–13 / 15) is driven almost entirely by q3 ("parse citations"),
-  which swung 0/3 to 2/3 across these runs. Tellingly, full-precision 24 GB
-  scored the *same* 11/15 as 4-bit 8 GB, so the earlier "quant costs ~14 points"
-  read was an artifact of one noisy pair, not a real precision effect. Context
-  reduction was >20x everywhere. A real precision/VRAM ranking would need many
-  more iterations (and more queries), especially on the flaky cases.
-- **Decision:** no precision conclusion from this set. Quant is a usable 8 GB
-  fallback; full precision is preferable on capability grounds (we know quant
-  truncates paths more — exp. 1), but this benchmark didn't measure a hit-rate
-  gap that survives the noise.
+  | Config | GPU | Precision | File-hit |
+  |---|---|---|---|
+  | `8gb-a2000-quant` | A2000 8 GB | 4-bit bitsandbytes | 11/15 (73%) |
+  | `12gb-3060-full` | RTX 3060 12 GB | full BF16 | 13/15 (87%) |
+  | `24gb-full` | 24 GB | full BF16, ctx 65536 | 11/15 (73%) |
+
+  **P2000 5 GB (Ollama GGUF — vLLM can't run on Pascal), quant × context:**
+
+  | | ctx 8192 | ctx 16384 |
+  |---|---|---|
+  | Q4_K_M | 5/10 (50%) | timed out (>220 s/query) |
+  | Q6_K | 3/10 (30%) | — (would time out) |
+
+  Context reduction was >10x for every config (exact multiple noisy).
+
+- **Findings:**
+  - **The cross-GPU configs are within sampling noise** — 24 GB full scored the
+    *same* 11/15 as 8 GB 4-bit, so there's no measurable precision penalty here.
+    The 11–13 spread is mostly q3 ("parse citations") swinging 0–2/3.
+  - **Higher quant did not help.** On the P2000, Q6_K (30%) did not beat Q4_K_M
+    (50%) — if anything worse, and with fewer tool calls. The limiter on small
+    models is agentic tool-use competence, not quant precision.
+  - **More context hurt on the weak card.** 16384 on the P2000 timed out per
+    query; 8192 is its practical ceiling. (`num_ctx` raised via Modelfile.)
+  - The P2000 needs Ollama + a community GGUF + a custom no-think Modelfile, and
+    is much slower. Full write-up: [docs/running-on-pascal-p2000.md](../docs/running-on-pascal-p2000.md).
+  - _8 GB three-way (vLLM-4bit vs Ollama-Q4 vs Ollama-Q6) — pending GGUF
+    downloads; to be added._
+
+- **Decision:** no accuracy ranking survives the noise of this 5-query set; a
+  real comparison needs far more iterations/queries. Practically: use a
+  vLLM-capable card (≥ compute 7.0, ≥ 8 GB); the P2000/Ollama path runs but is
+  slow and weak.
 
 ## Config decisions so far
 

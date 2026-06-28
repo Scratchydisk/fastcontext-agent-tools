@@ -20,7 +20,9 @@ os.environ.setdefault("FASTCONTEXT_REROOT_PATHS", "1")
 from fastcontext_mcp.runtime import run_fastcontext  # noqa: E402
 
 
-def explore(repo: str, query: str, max_turns: int = 10, timeout: int = 220) -> dict:
+def explore(repo: str, query: str, max_turns: int = 10, timeout: int | None = None) -> dict:
+    if timeout is None:
+        timeout = int(os.getenv("BENCH_TIMEOUT", "220"))
     return run_fastcontext(
         {
             "repo_path": repo,
