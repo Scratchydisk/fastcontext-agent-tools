@@ -34,6 +34,7 @@ def explore(repo: str, query: str, max_turns: int = 10, timeout: int = 220) -> d
 
 def config_lines() -> list[str]:
     return [
+        f"- label: `{os.getenv('BENCH_LABEL') or '(none)'}`",
         f"- endpoint: `{os.environ['BASE_URL']}`",
         f"- model: `{os.environ['MODEL']}`",
         f"- FC_MAX_TOKENS: `{os.environ['FC_MAX_TOKENS']}`",

@@ -122,7 +122,7 @@ def main() -> None:
     ]
     report = "\n".join(lines)
 
-    out = os.path.join(os.path.dirname(__file__), "results", "token_usage.md")
+    out = os.path.join(os.path.dirname(__file__), "results", os.getenv("BENCH_LABEL", ""), "token_usage.md")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w") as f:
         f.write(report)

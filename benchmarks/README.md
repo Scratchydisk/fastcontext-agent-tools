@@ -78,6 +78,21 @@ out sampling noise before trusting a single number.
 - The cases are written against this repo. Benchmarking another codebase means
   writing cases for it (set `FASTCONTEXT_BENCH_REPO`).
 
+## Comparing hardware / precision
+
+Set `BENCH_LABEL` to write results under `results/<label>/` instead of the top
+level, so runs against different endpoints don't overwrite each other:
+
+```bash
+BENCH_LABEL=8gb-a2000-quant BASE_URL=http://127.0.0.1:30001/v1 python benchmarks/accuracy.py
+BENCH_LABEL=24gb-full       BASE_URL=https://gpu24/v1          python benchmarks/accuracy.py
+```
+
+## Experiment log
+
+[EXPERIMENTS.md](EXPERIMENTS.md) records what we have tried, the results, and
+the resulting defaults.
+
 ## Latest results
 
 - [results/accuracy.md](results/accuracy.md)
