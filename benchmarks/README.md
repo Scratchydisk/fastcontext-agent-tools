@@ -1,0 +1,69 @@
+# Benchmarks
+
+Two small benchmarks for the FastContext explorer:
+
+- `accuracy.py` — does it cite the right files?
+- `token_usage.py` — how much main-agent context does it save versus searching
+  inline?
+
+Both run a fixed set of "where is X" questions (`cases.py`) whose answers are
+known in this repository's own source, so this repo is the corpus.
+
+## Running
+
+You need a FastContext endpoint reachable from this machine (see the project
+[README](../README.md) and [docs/running-locally.md](../docs/running-locally.md)).
+Point the scripts at it and run from the repo root:
+
+```bash
+export BASE_URL="http://127.0.0.1:30000/v1"   # your endpoint (or an SSH tunnel)
+export API_KEY=""                              # match the server's --api-key
+python benchmarks/accuracy.py
+python benchmarks/token_usage.py
+```
+
+Defaults are filled in for anything unset (`FASTCONTEXT_REROOT_PATHS=1`,
+`FC_MAX_TOKENS=4000`, `FASTCONTEXT_ALLOWED_ROOTS=/`, model
+`FastContext-1.0-4B-RL`). Each script writes a dated report under `results/` and
+prints it.
+
+Results vary run to run because the model samples; re-run to confirm a figure.
+
+## How token usage is measured
+
+The metric is **tokens that enter the main agent's context** to reach the same
+answer (the file locations). The main agent is Claude, so the most appropriate
+counter is Anthropic's own — used automatically when `ANTHROPIC_API_KEY` is set
+(`pip install anthropic`). Without a key it falls back to a local `tiktoken`
+encoding (`pip install tiktoken`), then to a chars/4 estimate. Each report names
+the tokenizer it used. Absolute counts shift between tokenizers; the ratio
+between arms does not.
+
+`token_usage.py` compares three numbers per query:
+
+- **WITH FastContext** — the exact JSON the MCP tool returns to the agent
+  (citations, final answer, metadata). That is everything the main agent
+  ingests for the lookup.
+- **WITHOUT, inline search** — the tool-result bytes in FastContext's own
+  trajectory: the identical search work, counted as if the main agent had run it
+  itself and read every result into context. This is the apples-to-apples
+  baseline.
+- **WITHOUT, grep + read** — an independent baseline: grep the repo for sensible
+  terms and read every matching file.
+
+Only answered queries count toward the reported reduction. A miss "saves" tokens
+but returns nothing, so it is not a saving.
+
+## Caveats
+
+- This measures context cost, the mechanism behind the savings, not Claude's
+  billing meter directly. The ground-truth figure is a real Claude Code A/B:
+  run one task told to use `fastcontext`, the same task told to only grep, and
+  compare `/cost`.
+- The cases are written against this repo. Benchmarking another codebase means
+  writing cases for it (set `FASTCONTEXT_BENCH_REPO`).
+
+## Latest results
+
+- [results/accuracy.md](results/accuracy.md)
+- [results/token_usage.md](results/token_usage.md)

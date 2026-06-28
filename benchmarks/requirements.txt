@@ -1,0 +1,10 @@
+# Token counters for the benchmarks. Neither is required to run them (there is a
+# chars/4 fallback), but installing one gives real token counts.
+#
+# Preferred: Anthropic's official counter, used automatically when
+# ANTHROPIC_API_KEY is set. It measures tokens in Claude's own tokenizer, which
+# is exactly the main-agent context we care about.
+anthropic
+
+# Offline fallback: a local encoding (o200k_base), used when no API key is set.
+tiktoken
