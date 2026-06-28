@@ -1,8 +1,10 @@
-# Running FastContext-agent-tools locally
+# Running FastContext-agent-tools locally (vLLM)
 
 How to stand up this MCP server on a workstation with a GPU, using vLLM to serve
-the model. For the Ollama/GGUF alternative (any card, including ones too old for
-vLLM), see [running-on-ollama.md](running-on-ollama.md). Companion to
+the model. **Ollama is the recommended default** (simpler, and at least as
+accurate in testing) — see [running-on-ollama.md](running-on-ollama.md). Use
+vLLM, covered here, when you want full BF16, maximum throughput, or contexts
+longer than a GGUF setup holds. Companion to
 [fastcontext-vs-context-mode.md](fastcontext-vs-context-mode.md).
 
 ## The shape of it

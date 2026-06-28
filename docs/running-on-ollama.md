@@ -1,13 +1,16 @@
 # Running the model via Ollama (GGUF)
 
-An alternative to the vLLM path in [running-locally.md](running-locally.md).
-Ollama serves a GGUF quant of FastContext-4B and exposes the same
-OpenAI-compatible `/v1` endpoint the MCP server expects, so nothing downstream
-changes: you point `BASE_URL` at Ollama instead of vLLM.
+The recommended way to serve the model. Ollama serves a GGUF quant of
+FastContext-4B and exposes the same OpenAI-compatible `/v1` endpoint the MCP
+server expects, so nothing downstream changes: you point `BASE_URL` at Ollama.
+The [vLLM path](running-locally.md) is the alternative for full BF16, maximum
+throughput, or very long contexts.
 
 This is not a fallback for weak hardware. On the cards we tested, a Q4_K_M GGUF
 under Ollama scored as well as or better than vLLM on the same card (15/15 on a
-12 GB 3060, 14/15 on an 8 GB A2000, against 13/15 and 11/15 for vLLM). See
+12 GB 3060, 14/15 on an 8 GB A2000, against 13/15 and 11/15 for vLLM, though that
+5-query spread is within sampling noise). It is also simpler: one `ollama pull`
+and a small Modelfile, no serving flags to tune. See
 [benchmarks/EXPERIMENTS.md](../benchmarks/EXPERIMENTS.md) experiment 6.
 
 When to pick Ollama over vLLM:

@@ -23,9 +23,9 @@ python -m pip install -e .
 ## 環境變數
 
 ```bash
-export BASE_URL="http://127.0.0.1:30000/v1"
-export MODEL="microsoft/FastContext-1.0-4B-SFT"
-export API_KEY="your-api-key"
+export BASE_URL="http://127.0.0.1:11434/v1"      # Ollama（建議）
+export MODEL="fc-q4-nothink-16k:latest"
+export API_KEY="ollama"
 export FASTCONTEXT_ALLOWED_ROOTS="/path/to/repos"
 ```
 
@@ -40,10 +40,13 @@ export FASTCONTEXT_ALLOWED_ROOTS="/path/to/repos"
       "command": "python",
       "args": ["-m", "fastcontext_mcp"],
       "env": {
-        "BASE_URL": "http://127.0.0.1:30000/v1",
-        "MODEL": "microsoft/FastContext-1.0-4B-SFT",
-        "API_KEY": "your-api-key",
-        "FASTCONTEXT_ALLOWED_ROOTS": "/path/to/repos"
+        "BASE_URL": "http://127.0.0.1:11434/v1",
+        "MODEL": "fc-q4-nothink-16k:latest",
+        "API_KEY": "ollama",
+        "FASTCONTEXT_ALLOWED_ROOTS": "/path/to/repos",
+        "FC_TEMPERATURE": "0.2",
+        "FASTCONTEXT_REROOT_PATHS": "1",
+        "FASTCONTEXT_EXPLORE_RETRIES": "2"
       }
     }
   }

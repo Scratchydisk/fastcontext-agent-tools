@@ -31,12 +31,12 @@ that adds:
   MCP spec requires. Upstream used LSP-style `Content-Length` framing, which
   spec-compliant clients such as Claude Code cannot connect to. Without this the
   server does not connect at all.
-- **Two documented serving paths.** vLLM via `scripts/serve-model.sh`, with
+- **Two documented serving paths, Ollama recommended.** A GGUF quant under
+  Ollama is the simplest setup and, on the cards tested, was at least as accurate
+  as vLLM ([docs/running-on-ollama.md](docs/running-on-ollama.md)). vLLM is still
+  documented for full BF16, maximum throughput, or very long contexts, with
   opt-in flags (`QUANT`, `GPU_MEM_UTIL`, `ENFORCE_EAGER`, `CTX_LEN`) that fit
-  FastContext-4B onto an 8 GB card; and Ollama with a GGUF quant, which on the
-  cards tested matched or beat vLLM for accuracy. See
-  [docs/running-locally.md](docs/running-locally.md) and
-  [docs/running-on-ollama.md](docs/running-on-ollama.md).
+  FastContext-4B onto an 8 GB card ([docs/running-locally.md](docs/running-locally.md)).
 - **Accuracy defaults that measurably help.** Citation path re-rooting
   (`FASTCONTEXT_REROOT_PATHS`) recovers truncated paths the model emits;
   `FC_TEMPERATURE=0.2` raised the benchmark from 80% to 93%; and retry-on-empty
@@ -88,12 +88,13 @@ claude mcp add-json fastcontext --scope user '{
   "command": "uvx",
   "args": ["--from", "git+https://github.com/Scratchydisk/fastcontext-agent-tools@main", "fastcontext-mcp"],
   "env": {
-    "BASE_URL": "https://fastcontext.example.com/v1",
-    "MODEL": "microsoft/FastContext-1.0-4B-RL",
-    "API_KEY": "sk-your-key",
+    "BASE_URL": "http://127.0.0.1:11434/v1",
+    "MODEL": "fc-q4-nothink-16k:latest",
+    "API_KEY": "ollama",
     "FASTCONTEXT_ALLOWED_ROOTS": "/",
     "FC_TEMPERATURE": "0.2",
-    "FASTCONTEXT_REROOT_PATHS": "1"
+    "FASTCONTEXT_REROOT_PATHS": "1",
+    "FASTCONTEXT_EXPLORE_RETRIES": "2"
   }
 }'
 
@@ -103,8 +104,14 @@ claude mcp get fastcontext        # Status: Connected
 
 Notes:
 
-- `API_KEY` must match the server's `--api-key`. Use `""` for an unauthenticated
-  endpoint.
+- `BASE_URL` and `MODEL` above are the Ollama defaults (a local Ollama on
+  `:11434` serving the `fc-q4-nothink-16k` GGUF built in
+  [docs/running-on-ollama.md](docs/running-on-ollama.md)). `MODEL` must match the
+  name the endpoint serves. For vLLM it's `microsoft/FastContext-1.0-4B-RL` on
+  `:30000`.
+- `API_KEY` must match the server's key. Ollama ignores it, so any non-empty
+  value works (`ollama`); for vLLM, match its `--api-key`, or use `""` for an
+  unauthenticated endpoint.
 - `FASTCONTEXT_ALLOWED_ROOTS` lists the local repositories exploration may
   target (`/` allows any path). The files are always read on the machine running
   the MCP server; only inference is remote.
@@ -261,9 +268,9 @@ Requirements:
 Set the endpoint environment before starting the server:
 
 ```bash
-export BASE_URL="http://127.0.0.1:30000/v1"
-export MODEL="microsoft/FastContext-1.0-4B-RL"
-export API_KEY="your-api-key"
+export BASE_URL="http://127.0.0.1:11434/v1"      # local Ollama
+export MODEL="fc-q4-nothink-16k:latest"
+export API_KEY="ollama"
 export FASTCONTEXT_ALLOWED_ROOTS="/path/to/repos"
 ```
 
@@ -281,12 +288,13 @@ For an MCP client other than the Claude Code plugin, add a stdio server:
       "command": "python",
       "args": ["-m", "fastcontext_mcp"],
       "env": {
-        "BASE_URL": "http://127.0.0.1:30000/v1",
-        "MODEL": "microsoft/FastContext-1.0-4B-RL",
-        "API_KEY": "your-api-key",
+        "BASE_URL": "http://127.0.0.1:11434/v1",
+        "MODEL": "fc-q4-nothink-16k:latest",
+        "API_KEY": "ollama",
         "FASTCONTEXT_ALLOWED_ROOTS": "/path/to/repos",
         "FC_TEMPERATURE": "0.2",
-        "FASTCONTEXT_REROOT_PATHS": "1"
+        "FASTCONTEXT_REROOT_PATHS": "1",
+        "FASTCONTEXT_EXPLORE_RETRIES": "2"
       }
     }
   }
@@ -337,9 +345,8 @@ Use it when a task needs repository localization before editing.
 
 Serving the model is two independent processes:
 
-1. The model server: vLLM serving `FastContext-1.0-4B-RL` on an
-   OpenAI-compatible endpoint at `http://127.0.0.1:30000/v1`. Long-running, uses
-   the GPU.
+1. The model server: an OpenAI-compatible endpoint serving the FastContext model
+   on the GPU. Long-running. This can be Ollama or vLLM.
 2. The MCP server: `python -m fastcontext_mcp`, spawned over stdio by the agent
    client. Lightweight (no torch). It shells out to `fastcontext.cli`, which
    calls the model server and returns citations.
@@ -348,7 +355,19 @@ The `READ`, `GLOB`, and `GREP` tools run inside the `fastcontext.cli` process,
 not on the model server, so the repository being explored must live on the
 machine running the MCP server. The model server only does inference.
 
-Run it with the helper scripts:
+### Ollama (recommended)
+
+Simplest to set up, and on the cards tested it was at least as accurate as vLLM.
+Serve a GGUF quant on the standard Ollama endpoint (`http://127.0.0.1:11434/v1`)
+and point the MCP server at it. The model needs a small one-time Modelfile (it's
+a reasoning model, so a "no-think" prefix is required) and the KV cache must stay
+at fp16. The full recipe, including context sizing and the GPU-pinning and
+KV-cache gotchas, is in [docs/running-on-ollama.md](docs/running-on-ollama.md).
+
+### vLLM (full precision, max throughput)
+
+Worth it when you want full BF16, the highest throughput, or contexts past what a
+GGUF setup holds. Run it with the helper scripts:
 
 ```bash
 # Terminal 1: serve the model (the first run downloads ~8 GB of weights).
@@ -362,13 +381,9 @@ export HF_TOKEN=hf_...        # avoids an unauthenticated Hugging Face rate-limi
 
 `serve-model.sh` already passes `--enable-auto-tool-choice --tool-call-parser
 hermes`, which FastContext requires (it reads server-side `tool_calls`). If
-`explore` returns no citations, try `--tool-call-parser qwen3_xml` instead.
-For VRAM and context-length sizing, see [docs/running-locally.md](docs/running-locally.md).
-
-Prefer Ollama, or have a GPU too old for vLLM? A GGUF quant under Ollama serves
-the same `/v1` endpoint and, on the cards tested, was as accurate as vLLM. The
-setup (no-think Modelfile, context sizing, the KV-cache gotcha) is in
-[docs/running-on-ollama.md](docs/running-on-ollama.md).
+`explore` returns no citations, try `--tool-call-parser qwen3_xml` instead. It
+also has opt-in flags to fit the model onto an 8 GB card. For VRAM and
+context-length sizing, see [docs/running-locally.md](docs/running-locally.md).
 
 ## Test it
 
@@ -411,9 +426,13 @@ the guide above. A connection error points at `BASE_URL` or the tunnel.
 
 Only inference moves to the remote box. The MCP server and `fastcontext.cli`,
 which read your repository files, stay local. The remote host needs the GPU and
-the model; your machine keeps the repositories.
+the model; your machine keeps the repositories. This works the same whichever
+engine serves the model: run it on the remote host and reach it over an SSH
+tunnel (`ssh -L 30000:127.0.0.1:11434 gpuhost` for Ollama, or `:30000` for
+vLLM), then point `BASE_URL` at the local end of the tunnel.
 
-On the remote GPU host:
+For the Ollama path, the [Ollama guide](docs/running-on-ollama.md) covers the
+tunnel and env block directly. The vLLM equivalent, on the remote GPU host:
 
 ```bash
 uv pip install vllm
