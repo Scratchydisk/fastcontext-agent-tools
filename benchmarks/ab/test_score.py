@@ -27,10 +27,27 @@ class TestScore(unittest.TestCase):
         self.assertFalse(s["area"])
 
     def test_area_hit_from_reported_path(self):
+        # truth_dir is ABSOLUTE (as run_ab produces); reported path is repo-relative
         ev = {**RESULT, "result": "Look at src/Api/Auth/Other.cs"}
-        s = score_events([ev], {"AuthService.cs"}, {"src/Api/Auth"})
+        s = score_events([ev], {"AuthService.cs"},
+                         {"/mnt/wdblue/stewart/Projects/sasystem/src/Api/Auth"})
         self.assertFalse(s["success"])
         self.assertTrue(s["area"])
+
+    def test_area_miss_unrelated_dir(self):
+        # absolute truth_dir, reported path in a completely different dir — must NOT hit
+        ev = {**RESULT, "result": "Look at src/Other/Module/Foo.cs"}
+        s = score_events([ev], {"AuthService.cs"},
+                         {"/mnt/wdblue/stewart/Projects/sasystem/src/Api/Auth"})
+        self.assertFalse(s["success"])
+        self.assertFalse(s["area"])
+
+    def test_area_miss_bare_filename(self):
+        # bare filename (no dirname) must NOT trigger an area hit
+        ev = {**RESULT, "result": "Look at AuthService.cs for details"}
+        s = score_events([ev], {"Other.cs"},
+                         {"/mnt/wdblue/stewart/Projects/sasystem/src/Api/Auth"})
+        self.assertFalse(s["area"])
 
 if __name__ == "__main__":
     unittest.main()

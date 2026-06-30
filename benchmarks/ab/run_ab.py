@@ -35,7 +35,7 @@ def one_run(arm, query, model, timeout):
     proc = subprocess.run(argv, cwd=TARGET_REPO, capture_output=True, text=True,
                           timeout=timeout, env={**os.environ, **env})
     events = [json.loads(l) for l in proc.stdout.splitlines() if l.strip().startswith("{")]
-    return events
+    return events, proc.returncode
 
 
 def main():
@@ -62,19 +62,26 @@ def main():
         for arm in ("without", "with"):
             for run in range(n):
                 t0 = time.time()
+                rc = 0
                 try:
-                    events = one_run(arm, query, a.model, a.timeout)
+                    events, rc = one_run(arm, query, a.model, a.timeout)
                     s = score_events(events, truth, tdirs[i])
                 except Exception as exc:  # noqa: BLE001
                     print(f"  t{i} {arm} run{run}: FAILED {exc}")
                     s = {"success": False, "area": False, "used_fastcontext": False,
                          "input_tokens": 0, "output_tokens": 0, "cost_usd": None,
                          "num_turns": None, "tool_calls": []}
+                # Flag crashed runs: no usage captured (no result event) AND non-zero exit
+                if not s["input_tokens"] and rc != 0:
+                    s["error"] = True
+                    print(f"  t{i} {arm} run{run}: ERROR rc={rc}")
+                else:
+                    s.setdefault("error", False)
+                    print(f"  t{i} {arm} run{run}: hit={s['success']} "
+                          f"tok={s['input_tokens']+s['output_tokens']} ${s['cost_usd']} "
+                          f"fc={s['used_fastcontext']}")
                 s.update(task=i, arm=arm, run=run, wall_s=round(time.time() - t0, 1))
                 rows.append(s)
-                print(f"  t{i} {arm} run{run}: hit={s['success']} "
-                      f"tok={s['input_tokens']+s['output_tokens']} ${s['cost_usd']} "
-                      f"fc={s['used_fastcontext']}")
 
     with open(os.path.join(RESULTS, label, "rows.jsonl"), "w") as f:
         for r in rows:

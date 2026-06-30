@@ -22,9 +22,9 @@ def score_events(events: list[dict], truth: set[str], truth_dirs: set[str]) -> d
     success = any(b in final for b in truth)
     paths = _PATH.findall(final)
     area = any(
-        (dn := os.path.dirname(p).replace("\\", "/")) and dn.endswith(
-            d.replace("\\", "/").lstrip("/")
-        )
+        (dn := os.path.dirname(p).replace("\\", "/"))
+        and (nd := d.replace("\\", "/").lstrip("/"))
+        and (dn.endswith(nd) or nd.endswith(dn))
         for p in paths for d in truth_dirs if d
     ) or any(os.path.basename(p) in truth for p in paths)
     return {
