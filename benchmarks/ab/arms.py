@@ -15,12 +15,21 @@ PROMPT = ("In this repository, find the file that implements the following, and 
 def build_command(arm: str, query: str, model: str, mcp_config: str, repo: str):
     argv = ["claude", "-p", PROMPT.format(query=query),
             "--model", model, "--output-format", "stream-json", "--verbose",
-            "--dangerously-skip-permissions"]
+            "--dangerously-skip-permissions",
+            # Isolation layer 1: discard sasystem's project .mcp.json (and user
+            # .mcp.json) so no ambient MCP servers bleed into the subprocess.
+            "--strict-mcp-config",
+            # Isolation layer 2: block ToolSearch so the model cannot load deferred
+            # MCP tool schemas from the session registry, which would otherwise
+            # re-introduce fastcontext/maximkeep even without an mcp-config entry.
+            "--disallowedTools", "ToolSearch"]
     if arm == "with":
         argv += ["--mcp-config", mcp_config,
                  "--append-system-prompt", DIRECTIVE,
                  "--allowedTools", "Grep,Glob,Read,Bash,mcp__fastcontext__fastcontext_explore"]
     elif arm == "without":
+        # No --mcp-config: combined with --strict-mcp-config this yields zero MCP
+        # servers regardless of what sasystem's project config declares.
         argv += ["--allowedTools", "Grep,Glob,Read,Bash"]
     else:
         raise ValueError(f"unknown arm: {arm}")

@@ -27,5 +27,41 @@ class TestArms(unittest.TestCase):
         self.assertIn("--dangerously-skip-permissions", argv_without)
         self.assertIn("--dangerously-skip-permissions", argv_with)
 
+    # --- Isolation assertions: lock in the contamination fix ---
+
+    def test_both_arms_have_strict_mcp_config(self):
+        """Both arms must carry --strict-mcp-config so sasystem's project .mcp.json
+        (and any user-level MCP config) cannot inject rogue servers."""
+        for arm in ("without", "with"):
+            argv, _ = build_command(arm, "find X", "opus", "fc.json", "/repo")
+            self.assertIn("--strict-mcp-config", argv,
+                          f"arm '{arm}' is missing --strict-mcp-config")
+
+    def test_both_arms_disallow_toolsearch(self):
+        """Both arms must disallow ToolSearch so the model cannot load deferred MCP
+        tool schemas from the ambient session registry at runtime."""
+        for arm in ("without", "with"):
+            argv, _ = build_command(arm, "find X", "opus", "fc.json", "/repo")
+            self.assertIn("--disallowedTools", argv,
+                          f"arm '{arm}' is missing --disallowedTools")
+            idx = argv.index("--disallowedTools")
+            self.assertIn("ToolSearch", argv[idx + 1],
+                          f"arm '{arm}' does not disallow ToolSearch")
+
+    def test_without_has_no_mcp_config_path(self):
+        """WITHOUT arm must not reference any mcp-config path; combined with
+        --strict-mcp-config this guarantees zero MCP servers."""
+        argv, _ = build_command("without", "find X", "opus", "fc.json", "/repo")
+        self.assertNotIn("--mcp-config", argv)
+
+    def test_with_strict_and_mcp_config(self):
+        """WITH arm must carry both --strict-mcp-config and its fastcontext
+        mcp-config path so only the intended server is reachable."""
+        argv, _ = build_command("with", "find X", "opus", "fc.json", "/repo")
+        self.assertIn("--strict-mcp-config", argv)
+        self.assertIn("--mcp-config", argv)
+        idx = argv.index("--mcp-config")
+        self.assertEqual(argv[idx + 1], "fc.json")
+
 if __name__ == "__main__":
     unittest.main()
