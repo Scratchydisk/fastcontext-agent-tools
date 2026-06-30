@@ -21,9 +21,12 @@ def score_events(events: list[dict], truth: set[str], truth_dirs: set[str]) -> d
             turns = ev.get("num_turns", turns)
     success = any(b in final for b in truth)
     paths = _PATH.findall(final)
-    area = any(os.path.dirname(p).replace("\\", "/").endswith(
-        d.replace("\\", "/").lstrip("/")) for p in paths for d in truth_dirs if d) \
-        or any(os.path.basename(p) in truth for p in paths)
+    area = any(
+        (dn := os.path.dirname(p).replace("\\", "/")) and dn.endswith(
+            d.replace("\\", "/").lstrip("/")
+        )
+        for p in paths for d in truth_dirs if d
+    ) or any(os.path.basename(p) in truth for p in paths)
     return {
         "success": success,
         "area": bool(area),

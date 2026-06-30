@@ -24,6 +24,7 @@ class TestScore(unittest.TestCase):
                          {"AuthService.cs"}, {"/repo/src/Api/Auth"})
         self.assertFalse(s["success"])
         self.assertTrue(s["used_fastcontext"])
+        self.assertFalse(s["area"])
 
     def test_area_hit_from_reported_path(self):
         ev = {**RESULT, "result": "Look at src/Api/Auth/Other.cs"}
