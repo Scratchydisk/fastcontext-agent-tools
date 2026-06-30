@@ -11,7 +11,8 @@ build/
 .DS_Store
 .fastcontext/
 
-# A/B harness: fixture captures (never commit raw LLM output)
+# A/B harness: fixture captures and results (never commit raw LLM output)
 benchmarks/ab/fixtures/*.jsonl
 benchmarks/ab/fixtures/*.err
+benchmarks/ab/results/
 
