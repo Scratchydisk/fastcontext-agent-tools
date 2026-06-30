@@ -79,5 +79,12 @@ The obvious counterweight: replace the strong main agent with a **weak one** —
 the same 10-query A/B. Hypothesis: a weaker main agent is a worse locator on its own, so
 delegating to the trained 4B explorer may *lift* it — meaning FastContext's value could
 depend on main-agent strength (redundant under Opus, useful under a small local model).
-The harness already supports this: it is model-parameterised (`--model`), so the change is
-pointing the runner at the local model's endpoint and rerunning `--phase full`.
+Attractive cost profile too: a local main agent is ~$0 in API spend (just GPU time),
+unlike this run's $28 of Opus.
+
+This is **not** a plain `--model` swap, though: `claude -p` drives Anthropic models, not
+an Ollama endpoint. Making a local 35B the *main agent* needs an Anthropic-compatible
+proxy in front of Ollama (e.g. LiteLLM) with `ANTHROPIC_BASE_URL` pointed at it — or a
+different agent runner entirely. The arm logic in `arms.py` (isolation flags, WITH/WITHOUT)
+is reusable; the main-model routing is the new piece, and worth designing deliberately
+(its own spec) rather than bolting on.
