@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "fastcontext": {
+      "command": "/mnt/wdblue/stewart/Projects/fastcontext-agent-tools/.venv/bin/python",
+      "args": ["-m", "fastcontext_mcp"],
+      "env": {
+        "BASE_URL": "http://192.168.0.248:11434/v1",
+        "MODEL": "fc-q8-nothink-64k:latest",
+        "API_KEY": "ollama",
+        "FASTCONTEXT_ALLOWED_ROOTS": "/mnt/wdblue/stewart/Projects/sasystem",
+        "FC_TEMPERATURE": "0.2",
+        "FASTCONTEXT_REROOT_PATHS": "1",
+        "FASTCONTEXT_EXPLORE_RETRIES": "2"
+      }
+    }
+  }
+}
