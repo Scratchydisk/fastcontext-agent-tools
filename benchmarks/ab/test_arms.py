@@ -37,16 +37,21 @@ class TestArms(unittest.TestCase):
             self.assertIn("--strict-mcp-config", argv,
                           f"arm '{arm}' is missing --strict-mcp-config")
 
-    def test_both_arms_disallow_toolsearch(self):
-        """Both arms must disallow ToolSearch so the model cannot load deferred MCP
-        tool schemas from the ambient session registry at runtime."""
+    def test_both_arms_disallow_toolsearch_skill_task_agent(self):
+        """Both arms must disallow ToolSearch, Skill, Task, and Agent.
+        ToolSearch: prevents deferred MCP schema loading from the session registry.
+        Skill: the environment exposes a /fastcontext skill — a direct backdoor.
+        Task/Agent: can spawn subagents with full tool access, bypassing arm isolation."""
+        required = {"ToolSearch", "Skill", "Task", "Agent"}
         for arm in ("without", "with"):
             argv, _ = build_command(arm, "find X", "opus", "fc.json", "/repo")
             self.assertIn("--disallowedTools", argv,
                           f"arm '{arm}' is missing --disallowedTools")
             idx = argv.index("--disallowedTools")
-            self.assertIn("ToolSearch", argv[idx + 1],
-                          f"arm '{arm}' does not disallow ToolSearch")
+            disallowed_set = set(argv[idx + 1].split(","))
+            missing = required - disallowed_set
+            self.assertFalse(missing,
+                             f"arm '{arm}' is missing from --disallowedTools: {missing}")
 
     def test_without_has_no_mcp_config_path(self):
         """WITHOUT arm must not reference any mcp-config path; combined with

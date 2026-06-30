@@ -22,7 +22,10 @@ def build_command(arm: str, query: str, model: str, mcp_config: str, repo: str):
             # Isolation layer 2: block ToolSearch so the model cannot load deferred
             # MCP tool schemas from the session registry, which would otherwise
             # re-introduce fastcontext/maximkeep even without an mcp-config entry.
-            "--disallowedTools", "ToolSearch"]
+            # Also block Skill/Task/Agent: the environment exposes a /fastcontext
+            # skill, and Task/Agent can spawn subagents with full tool access —
+            # both are backdoors to FastContext for the supposed-clean baseline.
+            "--disallowedTools", "ToolSearch,Skill,Task,Agent"]
     if arm == "with":
         argv += ["--mcp-config", mcp_config,
                  "--append-system-prompt", DIRECTIVE,
