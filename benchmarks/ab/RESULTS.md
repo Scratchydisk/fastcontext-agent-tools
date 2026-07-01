@@ -1,4 +1,8 @@
-# End-to-end A/B — does FastContext help a strong main agent on a large repo?
+# End-to-end A/B — when is FastContext worth running? (main-agent strength × repo difficulty)
+
+> Started as "does it help Opus on a large repo?" and grew into a 2×2 across
+> main-agent strength and repo difficulty. The headline is the 2×2 near the
+> bottom; the sections below build up from the first (Opus, large repo) arm.
 
 Date: 2026-06-30. Harness: `benchmarks/ab/` (this directory). Spec:
 [../../docs/superpowers/specs/2026-06-30-fastcontext-end-to-end-ab.md](../../docs/superpowers/specs/2026-06-30-fastcontext-end-to-end-ab.md).
@@ -54,13 +58,12 @@ believed — that pure grep never hit. That is a real downside, not just absence
 The first-10 smoke batch (5 queries, N=1, $3.02) showed the same shape: 5/5 both arms,
 cost tied — consistent with the full run.
 
-## Verdict
+## Verdict (this arm: Opus × large repo)
 
 **On large repos with a strong (Opus) main agent, FastContext is not worth running.** No
 success gain (94% either way), negligible cost change, and a genuine risk of being misled
-by a confident wrong citation. This does **not** contradict the small/medium-repo finding
-(strong there, ~25× context saving for the locate phase) — it says that value doesn't
-transfer to the large-repo + strong-driver regime.
+by a confident wrong citation. (The full picture across agents and repo sizes is the 2×2
+below.)
 
 ## Caveats
 
@@ -72,19 +75,48 @@ transfer to the large-repo + strong-driver regime.
 - **One isolation leak:** 1/50 WITHOUT runs reached FastContext despite the disallow; it
   does not move the 94%/cost aggregate, but the isolation is not airtight.
 
-## Next experiment — the opposite extreme
+## The 2×2 — main-agent strength × repo difficulty
 
-The obvious counterweight: replace the strong main agent with a **weak one** — a small
-(~30–35B) *local* coding model (e.g. `qwen3-coder:30b`, `devstral-small-2:24b`) driving
-the same 10-query A/B. Hypothesis: a weaker main agent is a worse locator on its own, so
-delegating to the trained 4B explorer may *lift* it — meaning FastContext's value could
-depend on main-agent strength (redundant under Opus, useful under a small local model).
-Attractive cost profile too: a local main agent is ~$0 in API spend (just GPU time),
-unlike this run's $28 of Opus.
+The counterweight to the Opus run: rerun the A/B with a **weak main agent** — the local
+`Qwen3.6-35B-A3B` (Q4 GGUF) driving `claude -p` via an Anthropic-compatible endpoint
+(`pve-3:8080`), same WITH-arm explorer (gpu-24 `fc-q8-nothink-64k`), same isolation. Then
+both agents on both the large repo (10 queries) and this small repo (5 queries), N=5.
 
-This is **not** a plain `--model` swap, though: `claude -p` drives Anthropic models, not
-an Ollama endpoint. Making a local 35B the *main agent* needs an Anthropic-compatible
-proxy in front of Ollama (e.g. LiteLLM) with `ANTHROPIC_BASE_URL` pointed at it — or a
-different agent runner entirely. The arm logic in `arms.py` (isolation flags, WITH/WITHOUT)
-is reusable; the main-model routing is the new piece, and worth designing deliberately
-(its own spec) rather than bolting on.
+**File-hit rate, WITHOUT → WITH FastContext:**
+
+| main agent | small repo (this repo, easy) | large repo (sasystem, hard) |
+|---|---|---|
+| **Opus** (strong) | 100% → 100% (wash) | 94% → 94% (wash) |
+| **Qwen-35B** (weak) | 100% → 100% (wash) | **60% → 66%** (+6 pts) |
+
+**FastContext moves the needle in exactly one cell: weak agent × hard repo.** Everywhere
+else it is a wash — a strong agent doesn't need it (either repo), and an easy repo leaves
+no room (either agent). The value tracks the *main agent's need*, not the locator's
+standalone accuracy — which is why the isolated-locator numbers (great on small, ~40–50%
+on large) were the wrong lens.
+
+Detail on the one cell that helps (Qwen × large, N=5, 100 runs, 0 errors):
+- Success 60% → 66%. Helped t3 (1→3), t5 (2→3), t10 (3→5); hurt t4 (4→3), t9 (3→2).
+- The lift is **directionally consistent** across three independent passes (batch +1/5,
+  wide +2/10, N=5 +3/50) — that consistency, not the single N=5 delta, is what makes it
+  credible; a single cell's 60-vs-66 confidence interval overlaps.
+- It **costs time, not saves it.** WITH used more turns (median 5.5 vs 5.0) and ~47% more
+  wall-clock (99 vs 67 min). An early "FastContext leashes the model's overthinking" idea
+  did not survive the wider sample — the one apparent speed-up was a single 900 s timeout
+  the unaided agent hit and the aided one avoided, not a general effect.
+
+## Overall verdict
+
+**Run FastContext in proportion to how much the driving model needs it.** Under a frontier
+main agent it's redundant regardless of repo; on an easy repo it's redundant regardless of
+agent. It earns its keep only for a **weak/local main agent on a large, hard codebase**, and
+even there the gain is modest (~+6 pts) and comes at a latency cost — worth it when API
+budget forces a small local driver, not worth it under Opus. The strong small/medium-repo
+locator value (isolated ~93–100%, ~25× context saving) is a separate, still-valid point
+about the locate phase in isolation; it does not imply an end-to-end win.
+
+## Caveats
+- **Locate-only** (Approach A): measures finding the file, not the downstream fix.
+- **N=5 per cell**; per-cell deltas are within sampling noise — the weak-agent lift rests on
+  cross-pass consistency, not one number.
+- **One isolation leak** (1/50 in one Opus-large WITHOUT run) — doesn't move aggregates.

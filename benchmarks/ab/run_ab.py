@@ -1,5 +1,9 @@
 # benchmarks/ab/run_ab.py
-"""Run the locate A/B: claude WITH vs WITHOUT FastContext over the maximkeep cases.
+"""Run the locate A/B: claude WITH vs WITHOUT FastContext.
+
+Cases: defaults to the maximkeep (large-repo) set. Set BENCH_CASES_DIR to the
+directory holding a different cases.py (e.g. the small-repo set at benchmarks/)
+for a like-for-like run on another codebase.
 
 Phases (cost-gated):  --phase smoke (1 task x 2 arms) | batch (--tasks 5 x 2 arms, N=1)
                       | full (all tasks x 2 arms x --n N).  Never auto-escalates.
@@ -9,8 +13,9 @@ import argparse, json, os, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BENCH = os.path.dirname(HERE)
+CASES_DIR = os.getenv("BENCH_CASES_DIR", os.path.join(BENCH, "maximkeep"))
 sys.path.insert(0, HERE)
-sys.path.insert(0, os.path.join(BENCH, "maximkeep"))
+sys.path.insert(0, CASES_DIR)
 from arms import build_command  # noqa: E402
 from score import score_events  # noqa: E402
 from aggregate import trade_table  # noqa: E402
