@@ -22,7 +22,43 @@ It does not bundle model weights, run inference, or modify repositories. The MCP
 server runs the bundled `fastcontext.cli` in the same Python environment and
 returns candidate file-line citations for the main agent to verify.
 
-## Does it actually help? (read this first)
+> _The overview above is inherited from the original upstream project
+> ([Jakevin/fastcontext-agent-tools](https://github.com/Jakevin/fastcontext-agent-tools))._
+> This fork has moved well beyond it — a validated serving stack, tuned defaults,
+> and an end-to-end benchmark. See **[About this fork](#about-this-fork)** for what
+> changed, then **[Do you need it?](#do-you-need-it)** for the honest verdict on
+> whether it's worth running.
+
+## About this fork
+
+This is a maintained fork of [`Jakevin/fastcontext-agent-tools`](https://github.com/Jakevin/fastcontext-agent-tools)
+that adds:
+
+- **An MCP stdio framing fix.** The server speaks newline-delimited JSON, as the
+  MCP spec requires. Upstream used LSP-style `Content-Length` framing, which
+  spec-compliant clients such as Claude Code cannot connect to. Without this the
+  server does not connect at all.
+- **Two documented serving paths, Ollama recommended.** A GGUF quant under
+  Ollama is the simplest setup and, on the cards tested, was at least as accurate
+  as vLLM ([docs/running-on-ollama.md](docs/running-on-ollama.md)). vLLM is still
+  documented for full BF16, maximum throughput, or very long contexts, with
+  opt-in flags (`QUANT`, `GPU_MEM_UTIL`, `ENFORCE_EAGER`, `CTX_LEN`) that fit
+  FastContext-4B onto an 8 GB card ([docs/running-locally.md](docs/running-locally.md)).
+- **Accuracy defaults that measurably help.** Citation path re-rooting
+  (`FASTCONTEXT_REROOT_PATHS`) recovers truncated paths the model emits;
+  `FC_TEMPERATURE=0.2` raised the benchmark from 80% to 93%; and retry-on-empty
+  (`FASTCONTEXT_EXPLORE_RETRIES`) re-runs the one failure mode that responds to
+  a retry. The reasoning behind each is in [benchmarks/EXPERIMENTS.md](benchmarks/EXPERIMENTS.md).
+- **A benchmark harness + an end-to-end A/B.** `benchmarks/` measures locator
+  accuracy and context saving across GPUs/serving configs, and `benchmarks/ab/`
+  runs the WITH-vs-WITHOUT-FastContext A/B that produced the "do you need it?"
+  verdict below (strong vs weak main agent × easy vs hard repo).
+
+The `microsoft/fastcontext` dependency is pinned at commit
+[`1522d6d`](https://github.com/microsoft/fastcontext/tree/1522d6d6b5e040e817b468e12826662aa069a8b0),
+which includes five fixes reported from this work (issues #18–#22).
+
+## Do you need it?
 
 We ran an end-to-end A/B: the same "find the file" tasks, WITH vs WITHOUT
 FastContext, across a strong and a weak main agent, on an easy and a hard repo
@@ -48,35 +84,6 @@ accuracy. Full data and method: [benchmarks/](benchmarks/README.md) and
 Separately, the locator in isolation is cheap and effective on small/medium repos
 (~93–100% file-hit, ~25× less context for the locate phase) — a real efficiency,
 just not one that changes end-to-end outcomes under a strong agent.
-
-## About this fork
-
-This is a maintained fork of [`Jakevin/fastcontext-agent-tools`](https://github.com/Jakevin/fastcontext-agent-tools)
-that adds:
-
-- **An MCP stdio framing fix.** The server speaks newline-delimited JSON, as the
-  MCP spec requires. Upstream used LSP-style `Content-Length` framing, which
-  spec-compliant clients such as Claude Code cannot connect to. Without this the
-  server does not connect at all.
-- **Two documented serving paths, Ollama recommended.** A GGUF quant under
-  Ollama is the simplest setup and, on the cards tested, was at least as accurate
-  as vLLM ([docs/running-on-ollama.md](docs/running-on-ollama.md)). vLLM is still
-  documented for full BF16, maximum throughput, or very long contexts, with
-  opt-in flags (`QUANT`, `GPU_MEM_UTIL`, `ENFORCE_EAGER`, `CTX_LEN`) that fit
-  FastContext-4B onto an 8 GB card ([docs/running-locally.md](docs/running-locally.md)).
-- **Accuracy defaults that measurably help.** Citation path re-rooting
-  (`FASTCONTEXT_REROOT_PATHS`) recovers truncated paths the model emits;
-  `FC_TEMPERATURE=0.2` raised the benchmark from 80% to 93%; and retry-on-empty
-  (`FASTCONTEXT_EXPLORE_RETRIES`) re-runs the one failure mode that responds to
-  a retry. The reasoning behind each is in [benchmarks/EXPERIMENTS.md](benchmarks/EXPERIMENTS.md).
-- **A benchmark harness + an end-to-end A/B.** `benchmarks/` measures locator
-  accuracy and context saving across GPUs/serving configs, and `benchmarks/ab/`
-  runs the WITH-vs-WITHOUT-FastContext A/B that produced the "does it actually
-  help?" verdict above (strong vs weak main agent × easy vs hard repo).
-
-The `microsoft/fastcontext` dependency is pinned at commit
-[`1522d6d`](https://github.com/microsoft/fastcontext/tree/1522d6d6b5e040e817b468e12826662aa069a8b0),
-which includes five fixes reported from this work (issues #18–#22).
 
 ## Install as a Claude Code plugin
 
