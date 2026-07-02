@@ -22,6 +22,33 @@ It does not bundle model weights, run inference, or modify repositories. The MCP
 server runs the bundled `fastcontext.cli` in the same Python environment and
 returns candidate file-line citations for the main agent to verify.
 
+## Does it actually help? (read this first)
+
+We ran an end-to-end A/B: the same "find the file" tasks, WITH vs WITHOUT
+FastContext, across a strong and a weak main agent, on an easy and a hard repo
+(file-hit rate, WITHOUT → WITH):
+
+| | small/easy repo | large/hard repo (~433k LOC) |
+|---|---|---|
+| **Opus** (strong main agent) | 100 → 100 | 94 → 94 |
+| **Qwen3.6-35B** (weak, local) | 100 → 100 | **60 → 66** |
+
+**FastContext helps in exactly one situation: a weak or local main model working
+in a large, hard codebase** — and even there the gain is modest (~+6 points) and
+costs some latency. Under a frontier model like Opus it's a wash (the model finds
+files fine on its own); on a small repo it's a wash (nothing to help with). It can
+also occasionally *mislead* — a confident wrong citation the main agent believes.
+
+So: **worth wiring up if you drive agents with small local models on big
+repositories; skip it if you're on a frontier model or a modest codebase.** The
+value tracks how much *your main agent* needs the help, not the explorer's own
+accuracy. Full data and method: [benchmarks/](benchmarks/README.md) and
+[benchmarks/ab/RESULTS.md](benchmarks/ab/RESULTS.md).
+
+Separately, the locator in isolation is cheap and effective on small/medium repos
+(~93–100% file-hit, ~25× less context for the locate phase) — a real efficiency,
+just not one that changes end-to-end outcomes under a strong agent.
+
 ## About this fork
 
 This is a maintained fork of [`Jakevin/fastcontext-agent-tools`](https://github.com/Jakevin/fastcontext-agent-tools)
@@ -42,8 +69,10 @@ that adds:
   `FC_TEMPERATURE=0.2` raised the benchmark from 80% to 93%; and retry-on-empty
   (`FASTCONTEXT_EXPLORE_RETRIES`) re-runs the one failure mode that responds to
   a retry. The reasoning behind each is in [benchmarks/EXPERIMENTS.md](benchmarks/EXPERIMENTS.md).
-- **A benchmark harness.** `benchmarks/` measures accuracy and the context-token
-  saving, and carries the results across the GPUs and serving configs tested.
+- **A benchmark harness + an end-to-end A/B.** `benchmarks/` measures locator
+  accuracy and context saving across GPUs/serving configs, and `benchmarks/ab/`
+  runs the WITH-vs-WITHOUT-FastContext A/B that produced the "does it actually
+  help?" verdict above (strong vs weak main agent × easy vs hard repo).
 
 The `microsoft/fastcontext` dependency is pinned at commit
 [`1522d6d`](https://github.com/microsoft/fastcontext/tree/1522d6d6b5e040e817b468e12826662aa069a8b0),
@@ -222,12 +251,15 @@ Sources:
 - Model card: <https://huggingface.co/microsoft/FastContext-1.0-4B-SFT>
 - Paper: <https://arxiv.org/abs/2606.14066>
 
-## Performance
+## Performance & tuning detail
 
-The `benchmarks/` folder measures two things on a small set of "where is X"
-queries with answers known in this repo's own source. The set is five queries,
-so treat the numbers as indicative, not a leaderboard. Full method, per-config
-results, and the tuning history are in [benchmarks/EXPERIMENTS.md](benchmarks/EXPERIMENTS.md).
+The end-to-end verdict is up top ([Does it actually help?](#does-it-actually-help-read-this-first));
+this is the supporting detail — the locator in isolation and the serving/tuning
+findings. Full method and per-config results live in [benchmarks/](benchmarks/README.md),
+[benchmarks/EXPERIMENTS.md](benchmarks/EXPERIMENTS.md), and
+[benchmarks/ab/RESULTS.md](benchmarks/ab/RESULTS.md). The isolated-locator query
+sets are small (5 on this repo, 10 on the large one), so treat single numbers as
+indicative, not a leaderboard.
 
 **Context saving.** Delegating the locate phase keeps the search out of the main
 agent's context. Across the answered queries, about 1.6k tokens entered the main

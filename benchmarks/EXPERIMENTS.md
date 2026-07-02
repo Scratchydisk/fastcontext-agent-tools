@@ -11,6 +11,12 @@ All runs used the `FastContext-1.0-4B-RL` model on a full-precision endpoint
 so it is small and sampling-noisy — single-pass numbers vary, and figures below
 use multiple iterations where it matters. Re-run to confirm.
 
+**Target-repo size:** this repo is small — 56 tracked files, ~1.4k lines of
+Python — so a full exploration trajectory fits inside a 16k context. That is why
+these numbers run high (~93–100%) and why context/precision knobs barely move
+here. For the same experiments on a ~433k-LOC codebase (where they behave very
+differently), see [maximkeep/results/FINDINGS.md](maximkeep/results/FINDINGS.md).
+
 ## Diagnosis: how the misses fail
 
 The wrong/missing citations are **sampling variance**, not a broken prompt. Two

@@ -1,13 +1,38 @@
 # Benchmarks
 
-Two small benchmarks for the FastContext explorer:
+Three layers, from "is the locator accurate?" up to "does using it actually make
+a coding agent better?":
 
-- `accuracy.py` — does it cite the right files?
-- `token_usage.py` — how much main-agent context does it save versus searching
-  inline?
+1. **Isolated locator** (`accuracy.py`, `token_usage.py`) — does the explorer cite
+   the right files, and how much context does it save? Small repo (this one).
+2. **Large-repo locator** (`maximkeep/`) — the same, on a ~433k-LOC private
+   codebase. See [maximkeep/results/FINDINGS.md](maximkeep/results/FINDINGS.md).
+3. **End-to-end A/B** (`ab/`) — the one that matters: does a *main agent* (Claude
+   or a local model) solve locate tasks better/cheaper WITH FastContext than
+   without? See [ab/RESULTS.md](ab/RESULTS.md).
 
-Both run a fixed set of "where is X" questions (`cases.py`) whose answers are
-known in this repository's own source, so this repo is the corpus.
+## Does it actually help? (the honest headline)
+
+The end-to-end A/B ran the same locate tasks WITH vs WITHOUT FastContext, across a
+strong and a weak main agent, on an easy and a hard repo (file-hit, WITHOUT → WITH):
+
+| | small repo (easy) | large repo (hard) |
+|---|---|---|
+| **Opus** (strong main agent) | 100 → 100 | 94 → 94 |
+| **Qwen3.6-35B** (weak, local) | 100 → 100 | **60 → 66** |
+
+**FastContext earns its keep in exactly one cell: a weak/local main agent on a
+large, hard repo** — and even there the lift is modest (~+6 pts) and costs latency.
+A strong agent doesn't need it (either repo); an easy repo leaves no room (either
+agent). The value tracks the *main agent's* need, not the locator's standalone
+accuracy — which is why the isolated-locator numbers below (great on small, ~40–50%
+on large) are necessary but not sufficient to answer "is it worth it."
+
+## The isolated-locator benchmarks
+
+`accuracy.py` and `token_usage.py` run a fixed set of "where is X" questions
+(`cases.py`) whose answers are known in this repository's own source, so this repo
+is the corpus.
 
 ## Running
 
@@ -95,10 +120,14 @@ the resulting defaults.
 
 ## Latest results
 
-Per hardware/precision config:
+- **End-to-end A/B (does it help the main agent?):** [ab/RESULTS.md](ab/RESULTS.md)
+  — the 2×2 above.
+- **Large-repo locator + context/precision sweeps:** [maximkeep/results/FINDINGS.md](maximkeep/results/FINDINGS.md).
+- **Isolated locator, per hardware/precision config:** `results/8gb-a2000-quant/`,
+  `results/12gb-3060-full/`, and the cross-config comparison in
+  [EXPERIMENTS.md](EXPERIMENTS.md) (experiments 6–8).
 
-- 8 GB, 4-bit quant: [results/8gb-a2000-quant/](results/8gb-a2000-quant/)
-- 12 GB, full BF16: [results/12gb-3060-full/](results/12gb-3060-full/)
-
-See [EXPERIMENTS.md](EXPERIMENTS.md) (experiment 6) for the cross-config
-comparison.
+Key tuning + serving findings from those runs (all in EXPERIMENTS.md): lower
+`FC_TEMPERATURE` to 0.2 (80% → 93%); keep `FASTCONTEXT_REROOT_PATHS=1`; Q4_K_M is
+the sweet spot (Q6 is worse and slower); **never quantise the KV cache** (`q4_0`
+KV badly degrades tool-calling); Ollama-GGUF matches vLLM on a capable card.
