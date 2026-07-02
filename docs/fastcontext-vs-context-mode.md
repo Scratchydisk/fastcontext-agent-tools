@@ -2,6 +2,13 @@
 
 *Findings note — Stewart McSporran, 16 June 2026*
 
+> **Update, 2 July 2026:** the FastContext arXiv paper (2606.14066) was
+> **withdrawn by the authors on 30 June 2026** (v4, no PDF served). The released
+> 4B models and the analysis below stand; the benchmark tables cite specific
+> versioned snapshots ([`v1`](https://arxiv.org/abs/2606.14066v1)), which remain
+> readable, but the authors no longer endorse the paper's claims. Read the
+> headline figures accordingly.
+
 ## TL;DR
 
 Two tools sit under the banner of "fix the context problem," and they feel like
@@ -35,8 +42,8 @@ two tools cut that waste at opposite ends of the pipeline.
 
 ### FastContext — a trained explorer subagent
 
-- **Source:** Microsoft Research, arXiv:2606.14066 (submitted 12 Jun 2026),
-  code at `github.com/microsoft/fastcontext`.
+- **Source:** Microsoft Research, arXiv:2606.14066 (submitted 12 Jun 2026;
+  **withdrawn 30 Jun 2026**), code at `github.com/microsoft/fastcontext`.
 - **Idea:** Separate *exploration* from *solving*. Most agents use one model for
   both, so every exploratory read and search pollutes the solver's history.
   Microsoft's own measurement makes the size of the problem concrete: in GPT-5.4

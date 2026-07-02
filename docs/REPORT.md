@@ -20,9 +20,9 @@ Primary sources:
 
 - Microsoft FastContext repository: <https://github.com/microsoft/fastcontext>
 - Hugging Face model card: <https://huggingface.co/microsoft/FastContext-1.0-4B-SFT>
-- arXiv paper: <https://arxiv.org/abs/2606.14066>
+- arXiv paper: <https://arxiv.org/abs/2606.14066> — **withdrawn by the authors on 30 June 2026** (v4). No PDF is served; the versioned snapshots ([`v1`](https://arxiv.org/abs/2606.14066v1)) remain readable but the authors no longer stand behind the claims. Cite with that caveat.
 
-The `microsoft/FastContext-1.0-4B-SFT` model card identifies the model as a 4B-parameter, BF16, MIT-licensed repository exploration model with up to 262K context. Microsoft reports Mini-SWE-Agent integration gains of up to 5.5 score and up to 60.3% main-agent token reduction.
+The `microsoft/FastContext-1.0-4B-SFT` model card identifies the model as a 4B-parameter, BF16, MIT-licensed repository exploration model with up to 262K context. The paper describes a family of exploration models spanning **4B–30B parameters**, but only the two 4B checkpoints (SFT and RL) were released; the larger models are paper-only. Microsoft reports Mini-SWE-Agent integration gains of up to 5.5 score and up to 60.3% main-agent token reduction.
 
 ## What Was Built
 
@@ -55,7 +55,7 @@ The repository includes:
 - This report: `docs/REPORT.md`.
 - GitHub Actions CI for unit tests.
 
-Model-quality and broader task-impact claims remain sourced from Microsoft FastContext because this repository has not re-run the full benchmark setup.
+Model-quality and broader task-impact claims remain sourced from Microsoft FastContext because this repository has not re-run the full benchmark setup. Note that the arXiv paper backing those claims was withdrawn on 30 June 2026; the released 4B model and its card are unaffected, but treat the paper's headline figures as unendorsed.
 
 ## Installation Contract
 

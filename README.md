@@ -256,7 +256,7 @@ Sources:
 
 - Microsoft FastContext: <https://github.com/microsoft/fastcontext>
 - Model card: <https://huggingface.co/microsoft/FastContext-1.0-4B-SFT>
-- Paper: <https://arxiv.org/abs/2606.14066>
+- Paper: <https://arxiv.org/abs/2606.14066> (**withdrawn by the authors on 30 June 2026**; snapshots at [`v1`](https://arxiv.org/abs/2606.14066v1) remain, but the claims are no longer endorsed. The paper covers a 4B–30B model family; only the 4B checkpoints were released.)
 
 ## Performance & tuning detail
 
